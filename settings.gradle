@@ -1,0 +1,8 @@
+include ':OfflineHandler-debug'
+include ':OfflineHandler-debug'
+include ':OfflineHandler-debug2'
+include ':OfflineHandler-debug1'
+include ':OfflineHandler-debug'
+include ':OfflineHandler'
+include ':app'
+rootProject.name = "POCocr"
