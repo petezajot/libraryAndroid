@@ -184,5 +184,7 @@ class OfflineHandler(ctx: Context) {
 
         return OfflineController().login(ctx, hash)
     }
+    //Sync
+    fun syncData(){}
 
 }
