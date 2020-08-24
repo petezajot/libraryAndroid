@@ -1,9 +1,9 @@
 package com.example.pococr
 
-import android.app.Activity
 import android.app.Dialog
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -14,9 +14,9 @@ import com.development.offlinehandler.OfflineHandler
 import com.development.offlinehandler.model.OfflineStageData
 import com.development.offlinehandler.model.OfflineUserData
 import kotlinx.android.synthetic.main.activity_main.*
-import java.util.HashMap
 
 class MainActivity : AppCompatActivity(), View.OnClickListener {
+    var idLocalStage = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,17 +25,24 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         OfflineHandler(this)
             .init(
                 "https://techhub.docsolutions.com/OnBoardingPre/WebApi/api/workflow/",
-                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6InVzcmFnZW50ZTAyIiwibmFtZWlkIjoiNDciLCJuYmYiOjE1OTgyMDQ4MTQsImV4cCI6MTU5ODI5MTIxNCwiaWF0IjoxNTk4MjA0ODE0LCJpc3MiOiJBdXRlbnRpY2FjaW9uT25Cb2FyZGluZ1NlcnZpY2UiLCJhdWQiOiJEZWZhdWx0QXVkaWVuY2UifQ.QgS0u4x-rZObdXIsIk6cAuJJkRa4q1qP1nvyqx90jeU")
-
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6InVzcmFnZW50ZTAyIiwibmFtZWlkIjoiNDciLCJuYmYiOjE1OTgzMDE0MzMsImV4cCI6MTU5ODM4NzgzMywiaWF0IjoxNTk4MzAxNDMzLCJpc3MiOiJBdXRlbnRpY2FjaW9uT25Cb2FyZGluZ1NlcnZpY2UiLCJhdWQiOiJEZWZhdWx0QXVkaWVuY2UifQ.JDuwXFlNSJHyDylH7A8UQuj1DvXTzTHdYptMwMsqh8g")
         btnNext.setOnClickListener(this)
     }
 
     override fun onResume() {
         super.onResume()
         //Obtener primer stage
-        var json = OfflineHandler(this).getStages("0")
-        titleVal.text = json.get("name").toString()
-        jsonVal.text = json.get("json").toString()
+
+        val timer = object: CountDownTimer(2000, 1000) {
+            override fun onTick(millisUntilFinished: Long) {}
+            override fun onFinish() {
+                var json = OfflineHandler(this@MainActivity).getStages("0", idLocalStage)
+                titleVal.text = json.get("name").toString()
+                jsonVal.text = json.get("json").toString()
+                idLocalStage = json.get("stageId") as Int
+            }
+        }
+        timer.start()
     }
 
     override fun onClick(v: View?) {
@@ -48,17 +55,18 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                 "{json contenido}",
                 "/api/muestra/metodo",
                 0,
-                "987654321")
+                "OM-987654321")
         )
 
         //Recuperar datos del stage siguiente
         jsonVal.text = ""
         //Método "getStages"
-        var json = OfflineHandler(this).getStages(titleVal.text.toString())
+        var json = OfflineHandler(this).getStages(titleVal.text.toString(), idLocalStage)
         jsonVal.text = json.get("json").toString()
 
         titleVal.text = ""
         titleVal.text = json.get("name").toString()
+        idLocalStage = Integer.parseInt(json.get("stageId").toString())
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -82,16 +90,27 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         var btn = dialog.findViewById<Button>(R.id.loginBtn)
         btn.setOnClickListener {
             //guardar usuario para el login offline (librería)
-            OfflineHandler(this).saveUser(OfflineUserData(
-                0,
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                ""))
+            var loginResponse = OfflineHandler(this).login("usragente02", "Nuevo1234")
+            if (loginResponse){
+                //Existe y está correcto
+                Toast.makeText(this, "Login Correcto", Toast.LENGTH_LONG).show()
+            }else{
+                //No existe o es incorrecto
+                Toast.makeText(this, "Login incorrecto o no disponible para sesión offline", Toast.LENGTH_LONG).show()
+            }
+
+            /*OfflineHandler(this).saveUser(OfflineUserData(
+                47,
+                "usragente02",
+                "Daniel",
+                "Díaz",
+                "Perez",
+                "usragente02@correo.com",
+                "1234567890",
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6InVzcmFnZW50ZTAyIiwibmFtZWlkIjoiNDciLCJuYmYiOjE1OTgyODY2MzYsImV4cCI6MTU5ODM3MzAzNiwiaWF0IjoxNTk4Mjg2NjM2LCJpc3MiOiJBdXRlbnRpY2FjaW9uT25Cb2FyZGluZ1NlcnZpY2UiLCJhdWQiOiJEZWZhdWx0QXVkaWVuY2UifQ.94Pd-17Pic4Yl5VdXLVwo1h06ljpBcUdgzq-KY3t1o0",
+                "Nuevo1234"))*/
+
+
         }
         dialog.show()
     }

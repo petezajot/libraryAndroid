@@ -75,7 +75,7 @@ internal class OfflineController {
         db.execSQL(query)
     }
 
-    fun getApiData(ctx: Context, stage: String): HashMap<String, Any> {
+    fun getApiData(ctx: Context, stage: String, idLocalStage: Int): HashMap<String, Any> {
         val h = DBHelper(ctx)
         val db = h.writableDatabase
         //Get Stages
@@ -84,7 +84,8 @@ internal class OfflineController {
             "SELECT " +
                     "${h.COL_STAGE_ID}, " +
                     "${h.COL_NAME}, " +
-                    "${h.COL_JSON} " +
+                    "${h.COL_JSON}, " +
+                    "${h.COL_ID} " +
                     "FROM ${h.TAB_JSON} " +
                     "ORDER BY ${h.COL_SEQUENCE} " +
                     "ASC LIMIT 1;"
@@ -92,15 +93,14 @@ internal class OfflineController {
             "SELECT " +
                     "${h.COL_STAGE_ID}, " +
                     "${h.COL_NAME}, " +
-                    "${h.COL_JSON} " +
+                    "${h.COL_JSON}, " +
+                    "${h.COL_ID} " +
                     "FROM ${h.TAB_JSON} " +
-                    "WHERE ${h.COL_ID} > (" +
-                    "SELECT ${h.COL_ID} FROM ${h.TAB_JSON} WHERE ${h.COL_NAME} = '${stage}') " +
+                    "WHERE ${h.COL_ID} > " +
+                    "(SELECT ${h.COL_ID} FROM ${h.TAB_JSON} WHERE ${h.COL_NAME} = '$stage' AND ${h.COL_STAGE_ID} = $idLocalStage) " +
                     "ORDER BY ${h.COL_ID} " +
                     "ASC LIMIT 1;"
         }
-
-        Log.e("Cueri::: ", query)
 
         var c = db.rawQuery(query, null)
         if (c.count > 0){
@@ -109,7 +109,13 @@ internal class OfflineController {
                 json.put("stageId", c.getInt(0))
                 json.put("name", c.getString(1))
                 json.put("json", c.getString(2))
+                json.put("id", c.getInt(3))
             }while (c.moveToNext())
+        }else{
+            json.put("stageId", 0)
+            json.put("name", "")
+            json.put("json", "")
+            json.put("id", 0)
         }
         db.close()
         return json
@@ -185,5 +191,24 @@ internal class OfflineController {
                 "WHERE ${h.COL_USER_ID} = ${hash.get("userId")};"
         db.execSQL(query)
         db.close()
+    }
+
+    fun login(ctx: Context, hash: HashMap<String, String>): Boolean {
+        val h = DBHelper(ctx)
+        val db = h.writableDatabase
+        var login: Boolean = false
+        val query = "SELECT COUNT (1) " +
+                "FROM ${h.TAB_USER} " +
+                "WHERE ${h.COL_USER_NAME} = '${hash.get("user")}' " +
+                "AND ${h.COL_PASS} = '${hash.get("pass")}'"
+        var c = db.rawQuery(query, null)
+        if (c.count > 0){
+            c.moveToFirst()
+            do {
+                login = if (c.getInt(0) == 1) true else false
+            }while (c.moveToNext())
+        }
+        db.close()
+        return login
     }
 }

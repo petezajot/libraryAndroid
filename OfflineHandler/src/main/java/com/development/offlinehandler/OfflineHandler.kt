@@ -5,10 +5,8 @@ import android.util.Log
 import android.widget.Toast
 import com.development.offlinehandler.controller.OfflineController
 import com.development.offlinehandler.misc.Misc
-import com.development.offlinehandler.model.ApiRequestGetData
-import com.development.offlinehandler.model.OfflineStageData
-import com.development.offlinehandler.model.OfflineUserData
-import com.development.offlinehandler.model.RequestContent
+import com.development.offlinehandler.model.*
+import com.development.offlinehandler.model.DBHelper
 import com.development.offlinehandler.requests.RequestApi
 import com.google.gson.Gson
 import retrofit2.Call
@@ -21,6 +19,7 @@ class OfflineHandler(ctx: Context) {
     var ctx = ctx
     //Inicializar librería
     fun init(url: String, token: String){
+        DBHelper(ctx)
         //URL global (Singleton)
         Singleton.url = url
         Singleton.token = token
@@ -119,8 +118,8 @@ class OfflineHandler(ctx: Context) {
         }
     }
     //Recuperar stages de workflow
-    fun getStages(stage: String): java.util.HashMap<String, Any> {
-        var json = OfflineController().getApiData(ctx, stage)
+    fun getStages(stage: String, idLocalStage: Int): java.util.HashMap<String, Any> {
+        var json = OfflineController().getApiData(ctx, stage, idLocalStage)
         return json
     }
     //Guardar respuestas de stages
@@ -176,6 +175,14 @@ class OfflineHandler(ctx: Context) {
         hash.put("pass", oud.pass)
 
         OfflineController().updateUserData(ctx, hash)
+    }
+
+    fun login(user: String, pass: String): Boolean {
+        var hash = java.util.HashMap<String, String>()
+        hash.put("user", user)
+        hash.put("pass", pass)
+
+        return OfflineController().login(ctx, hash)
     }
 
 }
