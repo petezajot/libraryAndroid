@@ -3,10 +3,10 @@ package com.development.offlinehandler.model
 import com.google.gson.annotations.SerializedName
 
 
-data class OfflineGetData(@SerializedName("Body") val Body: ArrayList<BodyContent>,
-                          @SerializedName("TransactionId") val TransactionId: String,
-                          @SerializedName("IsOK") val IsOK: Boolean,
-                          @SerializedName("Messages") val Messages: String)
+data class ApiRequestGetData(@SerializedName("Body") val Body: ArrayList<BodyContent>,
+                             @SerializedName("TransactionId") val TransactionId: String,
+                             @SerializedName("IsOK") val IsOK: Boolean,
+                             @SerializedName("Messages") val Messages: String)
 
 data class BodyContent(@SerializedName("Id") val Id: Int,
                        @SerializedName("Name") val Name: String,
@@ -70,3 +70,24 @@ data class RequestContent(@SerializedName("Body") val Body: String,
                           @SerializedName("SecurityData") val SecurityData: String,
                           @SerializedName("PKey") val PKey: String
 )
+//Modelo para el usuario (offline stages)
+data class OfflineStageData(@SerializedName("stageId") val stageId: Int,
+                            @SerializedName("name") val name: String,
+                            @SerializedName("json") val json: String,
+                            @SerializedName("endpoint") val endpoint: String,
+                            @SerializedName("seq") val seq: Int,
+                            @SerializedName("folio") val folio: String){
+    constructor():this(0, "", "", "", 0, "")
+}
+//Modelo para salvar el usuario
+data class OfflineUserData(@SerializedName("userId") val userId: Int,
+                           @SerializedName("userName") val userName: String,
+                           @SerializedName("name") val name: String,
+                           @SerializedName("apat") val apat: String,
+                           @SerializedName("amat") val amat: String,
+                           @SerializedName("email") val email: String,
+                           @SerializedName("phone") val phone: String,
+                           @SerializedName("token") val token: String,
+                           @SerializedName("pass") val pass: String){
+    constructor():this(0, "", "", "", "", "", "", "", "")
+}

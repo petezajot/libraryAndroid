@@ -1,6 +1,7 @@
 package com.development.offlinehandler.controller
 
 import android.content.Context
+import android.util.Log
 import com.development.offlinehandler.model.DBHelper
 import java.util.HashMap
 
@@ -21,17 +22,37 @@ internal class OfflineController {
         return existe
     }
 
+    fun userExists(ctx: Context, userId: Int): Int {
+        var h = DBHelper(ctx)
+        var db = h.writableDatabase
+        var existe = 0
+        val query = "SELECT COUNT(1) FROM ${h.TAB_USER} WHERE ${h.COL_USER_ID} = $userId;"
+        var c = db.rawQuery(query, null)
+        if (c.count > 0){
+            c.moveToFirst()
+            do {
+                existe = c.getInt(0)
+            }while (c.moveToNext())
+        }
+        db.close()
+        return existe
+    }
+
     fun insertApiData(jsonModel: HashMap<String, Any>, ctx: Context) {
         val h = DBHelper(ctx)
         val db = h.writableDatabase
         val query = "INSERT INTO ${h.TAB_JSON} (" +
                 "${h.COL_STAGE_ID}, " +
+                "${h.COL_BODY_ID}, " +
+                "${h.COL_BODY_NAME}, " +
                 "${h.COL_DATE}, " +
                 "${h.COL_NAME}, " +
                 "${h.COL_SEQUENCE}, " +
                 "${h.COL_JSON}" +
                 ")VALUES(" +
                 "${jsonModel.get("stageId")}, " +
+                "${jsonModel.get("bodyId")}, " +
+                "'${jsonModel.get("bodyName")}', " +
                 "'${jsonModel.get("dateTime")}', " +
                 "'${jsonModel.get("name")}'," +
                 "${jsonModel.get("sequence")}, " +
@@ -44,6 +65,8 @@ internal class OfflineController {
         val h = DBHelper(ctx)
         val db = h.writableDatabase
         val query = "UPDATE ${h.TAB_JSON} SET " +
+                "${h.COL_BODY_ID} = ${jsonModel.get("bodyId")}, " +
+                "${h.COL_BODY_NAME} = '${jsonModel.get("bodyName")}', " +
                 "${h.COL_DATE} = '${jsonModel.get("dateTime")}', " +
                 "${h.COL_NAME} = '${jsonModel.get("name")}', " +
                 "${h.COL_SEQUENCE} = ${jsonModel.get("sequence")}, " +
@@ -52,13 +75,14 @@ internal class OfflineController {
         db.execSQL(query)
     }
 
-    fun getApiData(ctx: Context, stage: String): HashMap<String, String> {
+    fun getApiData(ctx: Context, stage: String): HashMap<String, Any> {
         val h = DBHelper(ctx)
         val db = h.writableDatabase
         //Get Stages
-        var json = HashMap<String, String>()
+        var json = HashMap<String, Any>()
         var query = if (stage == "0"){
             "SELECT " +
+                    "${h.COL_STAGE_ID}, " +
                     "${h.COL_NAME}, " +
                     "${h.COL_JSON} " +
                     "FROM ${h.TAB_JSON} " +
@@ -66,20 +90,25 @@ internal class OfflineController {
                     "ASC LIMIT 1;"
         }else{
             "SELECT " +
+                    "${h.COL_STAGE_ID}, " +
                     "${h.COL_NAME}, " +
                     "${h.COL_JSON} " +
                     "FROM ${h.TAB_JSON} " +
-                    "WHERE ${h.COL_SEQUENCE} > (" +
-                    "SELECT ${h.COL_SEQUENCE} FROM ${h.TAB_JSON} WHERE ${h.COL_NAME} = '${stage}') " +
-                    "ORDER BY ${h.COL_STAGE_ID} " +
-                    "DESC LIMIT 1;"
+                    "WHERE ${h.COL_ID} > (" +
+                    "SELECT ${h.COL_ID} FROM ${h.TAB_JSON} WHERE ${h.COL_NAME} = '${stage}') " +
+                    "ORDER BY ${h.COL_ID} " +
+                    "ASC LIMIT 1;"
         }
+
+        Log.e("Cueri::: ", query)
+
         var c = db.rawQuery(query, null)
         if (c.count > 0){
             c.moveToFirst()
             do {
-                json.put("name", c.getString(0))
-                json.put("json", c.getString(1))
+                json.put("stageId", c.getInt(0))
+                json.put("name", c.getString(1))
+                json.put("json", c.getString(2))
             }while (c.moveToNext())
         }
         db.close()
@@ -110,5 +139,51 @@ internal class OfflineController {
                 "0" +
                 ");"
         db.execSQL(queryInsert)
+        db.close()
+    }
+
+    fun saveUserData(ctx: Context, hash: HashMap<String, Any>) {
+        val h = DBHelper(ctx)
+        val db = h.writableDatabase
+        val query = "INSERT INTO ${h.TAB_USER} (" +
+                "${h.COL_USER_ID}, " +
+                "${h.COL_USER_NAME}, " +
+                "${h.COL_NAME}, " +
+                "${h.COL_APAT}, " +
+                "${h.COL_AMAT}, " +
+                "${h.COL_EMAIL}, " +
+                "${h.COL_PHONE}, " +
+                "${h.COL_TOKEN}, " +
+                "${h.COL_PASS}" +
+                ")VALUES(" +
+                "${hash.get("userId")}, " +
+                "'${hash.get("userName")}', " +
+                "'${hash.get("name")}', " +
+                "'${hash.get("apat")}', " +
+                "'${hash.get("amat")}', " +
+                "'${hash.get("email")}', " +
+                "'${hash.get("phone")}', " +
+                "'${hash.get("token")}', " +
+                "'${hash.get("pass")}'" +
+                ");"
+        db.execSQL(query)
+        db.close()
+    }
+
+    fun updateUserData(ctx: Context, hash: HashMap<String, Any>) {
+        val h = DBHelper(ctx)
+        val db = h.writableDatabase
+        val query = "UPDATE ${h.TAB_USER} SET " +
+                "${h.COL_USER_NAME} = '${hash.get("userName")}', " +
+                "${h.COL_NAME} = '${hash.get("name")}', " +
+                "${h.COL_APAT} = '${hash.get("apat")}', " +
+                "${h.COL_AMAT} = '${hash.get("amat")}', " +
+                "${h.COL_EMAIL} = '${hash.get("email")}', " +
+                "${h.COL_PHONE} = '${hash.get("phone")}', " +
+                "${h.COL_TOKEN} = '${hash.get("token")}', " +
+                "${h.COL_PASS} = '${hash.get("pass")}' " +
+                "WHERE ${h.COL_USER_ID} = ${hash.get("userId")};"
+        db.execSQL(query)
+        db.close()
     }
 }
