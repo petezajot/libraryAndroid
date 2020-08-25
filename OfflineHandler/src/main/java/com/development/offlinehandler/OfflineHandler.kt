@@ -1,8 +1,10 @@
 package com.development.offlinehandler
 
 import android.content.Context
+import android.os.Build
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import com.development.offlinehandler.controller.OfflineController
 import com.development.offlinehandler.misc.Misc
 import com.development.offlinehandler.model.*
@@ -12,6 +14,7 @@ import com.google.gson.Gson
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.util.concurrent.ThreadLocalRandom
 
 
 class OfflineHandler(ctx: Context) {
@@ -124,17 +127,26 @@ class OfflineHandler(ctx: Context) {
     }
     //Guardar respuestas de stages
     fun saveStages(osd: OfflineStageData){
+        val STRING_LENGTH = 10
+        val ALPHANUMERIC_REGEX = "[a-zA-Z0-9]+"
+        val charPool : List<Char> = ('a'..'z') + ('A'..'Z') + ('0'..'9')
+        val randomString = (1..STRING_LENGTH)
+            .map { i -> kotlin.random.Random.nextInt(0, charPool.size) }
+            .map(charPool::get)
+            .joinToString("")
+
         var hash = java.util.HashMap<String, Any>()
         hash.put("stageId", osd.stageId)
         hash.put("name", osd.name)
         hash.put("json", osd.json)
         hash.put("endpoint", osd.endpoint)
         hash.put("seq", osd.seq)
-        hash.put("folio", osd.folio)
+        hash.put("folio", randomString)//Generar folio
         hash.put("date", Misc(ctx).dateTime())
 
         OfflineController().saveStageData(ctx, hash)
     }
+
     //Verificar si existe usuario para insertar o actualizar
     fun saveUser(oud: OfflineUserData){
         var existe = OfflineController().userExists(ctx, oud.userId)
@@ -185,6 +197,8 @@ class OfflineHandler(ctx: Context) {
         return OfflineController().login(ctx, hash)
     }
     //Sync
-    fun syncData(){}
+    fun syncData(){
+
+    }
 
 }

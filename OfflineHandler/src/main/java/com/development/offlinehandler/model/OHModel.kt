@@ -75,9 +75,8 @@ data class OfflineStageData(@SerializedName("stageId") val stageId: Int,
                             @SerializedName("name") val name: String,
                             @SerializedName("json") val json: String,
                             @SerializedName("endpoint") val endpoint: String,
-                            @SerializedName("seq") val seq: Int,
-                            @SerializedName("folio") val folio: String){
-    constructor():this(0, "", "", "", 0, "")
+                            @SerializedName("seq") val seq: Int){
+    constructor():this(0, "", "", "", 0)
 }
 //Modelo para salvar el usuario
 data class OfflineUserData(@SerializedName("userId") val userId: Int,

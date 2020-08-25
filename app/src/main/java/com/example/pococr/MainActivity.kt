@@ -4,6 +4,7 @@ import android.app.Dialog
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.CountDownTimer
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -40,6 +41,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                 titleVal.text = json.get("name").toString()
                 jsonVal.text = json.get("json").toString()
                 idLocalStage = json.get("stageId") as Int
+                Log.e("Folio Móvil::: ", json.get("folioMovil").toString())
             }
         }
         timer.start()
@@ -54,8 +56,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                 titleVal.text.toString(),
                 "{json contenido}",
                 "/api/muestra/metodo",
-                0,
-                "OM-987654321")
+                0)
         )
 
         //Recuperar datos del stage siguiente
