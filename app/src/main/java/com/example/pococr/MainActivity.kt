@@ -4,6 +4,7 @@ import android.app.Dialog
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.CountDownTimer
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -88,6 +89,18 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     }
 
     private fun loginDialog() {
+        var response = OfflineHandler(this).offlineResponses()
+        response.forEach {
+            Log.e("ID: ", it.get("id").toString())
+            Log.e("Nombre: ", it.get("name").toString())
+            Log.e("Stage: ", it.get("stageId").toString())
+            Log.e("Folio: ", it.get("folio").toString())
+            Log.e("EndPoint: ", it.get("endpoint").toString())
+            Log.e("JSON: ", it.get("json").toString())
+        }
+
+
+
         val dialog = Dialog(this)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dialog.setCancelable(true)

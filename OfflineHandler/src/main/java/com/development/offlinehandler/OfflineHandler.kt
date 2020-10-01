@@ -188,10 +188,21 @@ class OfflineHandler(ctx: Context) {
         return OfflineController().login(ctx, hash)
     }
 
-    fun offlineResponses(): java.util.HashMap<String, Any> {
-        val res: java.util.HashMap<String, Any> = OfflineController().getOfflineResponses(ctx)
-        Log.e("JSON::: ", res["json"].toString())
-        return res
+    fun offlineResponses(): ArrayList<HashMap<String, Any>> {
+        val res= OfflineController().getOfflineResponses(ctx)
+        var array = ArrayList<kotlin.collections.HashMap<String,Any>>()
+        res.forEach {
+            var hash = HashMap<String,Any>()
+            hash.put("id", it.id)
+            hash.put("endpoint", it.endpoint)
+            hash.put("folio", it.folio)
+            hash.put("json", it.json)
+            hash.put("name", it.name)
+            hash.put("stageId", it.stageId)
+
+            array.add(hash)
+        }
+        return array
     }
 
 }

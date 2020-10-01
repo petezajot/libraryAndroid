@@ -1,7 +1,10 @@
 package com.development.offlinehandler.controller
 
 import android.content.Context
+import android.util.Log
 import com.development.offlinehandler.model.DBHelper
+import com.development.offlinehandler.model.ReqCollection
+import com.development.offlinehandler.model.RequestResponse
 import java.util.*
 
 internal class OfflineController {
@@ -211,12 +214,12 @@ internal class OfflineController {
         return login
     }
 
-    fun getOfflineResponses(ctx: Context): HashMap<String, Any> {
+    fun getOfflineResponses(ctx: Context): ReqCollection {
         val h = DBHelper(ctx)
         val db = h.writableDatabase
-        /* 218 */
-        val json = HashMap<String, Any>()
+        var rc = ReqCollection()
         val query = "SELECT " +
+                "${h.COL_ID}, " +
                 "${h.COL_STAGE_ID}, " +
                 "${h.COL_NAME}, " +
                 "${h.COL_JSON}, " +
@@ -225,18 +228,23 @@ internal class OfflineController {
                 "FROM ${h.TAB_RESP} " +
                 "WHERE ${h.COL_SYNC} = 0 " +
                 "AND NOT ${h.COL_FOLIO} = ''"
+        Log.e("Query::: ", query)
         var c = db.rawQuery(query, null)
         if (c.count > 0){
             c.moveToFirst()
             do {
-                json.put("stageId", c.getInt(0))
-                json.put("name", c.getString(1))
-                json.put("json", c.getString(2))
-                json.put("endpoint", c.getString(3))
-                json.put("folio", c.getString(4))
+                var rr = RequestResponse()
+                rr.id       = c.getInt(0)
+                rr.stageId  = c.getInt(1)
+                rr.name     = c.getString(2)
+                rr.json     = c.getString(3)
+                rr.endpoint = c.getString(4)
+                rr.folio    = c.getString(5)
+
+                rc.add(rr)
             }while (c.moveToNext())
         }
         db.close()
-        return json
+        return rc
     }
 }
