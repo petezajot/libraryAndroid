@@ -6,4 +6,5 @@ object Singleton {
     }
     var url = ""
     var token = ""
+    var invoice = ""
 }

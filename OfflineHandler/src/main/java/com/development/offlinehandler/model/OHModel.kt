@@ -58,7 +58,7 @@ data class WFContent(@SerializedName("Id") val Id: Int,
 data class ActorContent(@SerializedName("Id") val Id: Int,
                         @SerializedName("Name") val Name: String,
                         @SerializedName("Description") val Description: String,
-                        @SerializedName("Sequence") val Sequence: Int,
+                            @SerializedName("Sequence") val Sequence: Int,
                         @SerializedName("Required") val Required: Boolean,
                         @SerializedName("DocumentalGroup") val DocumentalGroup: ArrayList<Any>,
                         @SerializedName("Icon") val Icon: IconContent

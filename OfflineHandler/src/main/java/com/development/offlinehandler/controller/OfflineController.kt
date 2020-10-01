@@ -1,9 +1,8 @@
 package com.development.offlinehandler.controller
 
 import android.content.Context
-import android.util.Log
 import com.development.offlinehandler.model.DBHelper
-import java.util.HashMap
+import java.util.*
 
 internal class OfflineController {
     fun exists(ctx: Context): Int{
@@ -210,5 +209,34 @@ internal class OfflineController {
         }
         db.close()
         return login
+    }
+
+    fun getOfflineResponses(ctx: Context): HashMap<String, Any> {
+        val h = DBHelper(ctx)
+        val db = h.writableDatabase
+        /* 218 */
+        val json = HashMap<String, Any>()
+        val query = "SELECT " +
+                "${h.COL_STAGE_ID}, " +
+                "${h.COL_NAME}, " +
+                "${h.COL_JSON}, " +
+                "${h.COL_ENDPOINT}, " +
+                "${h.COL_FOLIO} " +
+                "FROM ${h.TAB_RESP} " +
+                "WHERE ${h.COL_SYNC} = 0 " +
+                "AND NOT ${h.COL_FOLIO} = ''"
+        var c = db.rawQuery(query, null)
+        if (c.count > 0){
+            c.moveToFirst()
+            do {
+                json.put("stageId", c.getInt(0))
+                json.put("name", c.getString(1))
+                json.put("json", c.getString(2))
+                json.put("endpoint", c.getString(3))
+                json.put("folio", c.getString(4))
+            }while (c.moveToNext())
+        }
+        db.close()
+        return json
     }
 }

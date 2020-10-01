@@ -4,9 +4,6 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkInfo
 import android.util.Log
-import okhttp3.internal.Internal
-import okhttp3.internal.Internal.instance
-import java.lang.Exception
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -36,4 +33,12 @@ class Misc(context: Context) {
         val currentDate = sdf.format(Date())
         return currentDate
     }
+
+    fun generateRandom(length: Int) : String {
+        val allowedChars = ('A'..'Z') + ('a'..'z') + (0..9)
+        return (1..length)
+            .map { allowedChars.random() }
+            .joinToString("")
+    }
+
 }

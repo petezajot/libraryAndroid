@@ -6,7 +6,6 @@ import android.widget.Toast
 import com.development.offlinehandler.controller.OfflineController
 import com.development.offlinehandler.misc.Misc
 import com.development.offlinehandler.model.*
-import com.development.offlinehandler.model.DBHelper
 import com.development.offlinehandler.requests.RequestApi
 import com.google.gson.Gson
 import retrofit2.Call
@@ -125,12 +124,16 @@ class OfflineHandler(ctx: Context) {
     //Guardar respuestas de stages
     fun saveStages(osd: OfflineStageData){
         var hash = java.util.HashMap<String, Any>()
+        if(osd.name.equals("Selección de producto")){//Sí iniciamos solicitud
+            //y no hay folio, creamos uno ficticio
+            Singleton.invoice = if (osd.folio.equals("")) "FF-"+Misc(ctx).generateRandom(10) else osd.folio
+        }
         hash.put("stageId", osd.stageId)
         hash.put("name", osd.name)
         hash.put("json", osd.json)
         hash.put("endpoint", osd.endpoint)
         hash.put("seq", osd.seq)
-        hash.put("folio", osd.folio)
+        hash.put("folio", Singleton.invoice)
         hash.put("date", Misc(ctx).dateTime())
 
         OfflineController().saveStageData(ctx, hash)
@@ -183,6 +186,12 @@ class OfflineHandler(ctx: Context) {
         hash.put("pass", pass)
 
         return OfflineController().login(ctx, hash)
+    }
+
+    fun offlineResponses(): java.util.HashMap<String, Any> {
+        val res: java.util.HashMap<String, Any> = OfflineController().getOfflineResponses(ctx)
+        Log.e("JSON::: ", res["json"].toString())
+        return res
     }
 
 }

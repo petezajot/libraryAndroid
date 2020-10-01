@@ -25,7 +25,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         OfflineHandler(this)
             .init(
                 "https://techhub.docsolutions.com/OnBoardingPre/WebApi/api/workflow/",
-                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6InVzcmFnZW50ZTAyIiwibmFtZWlkIjoiNDciLCJuYmYiOjE1OTgzMDE0MzMsImV4cCI6MTU5ODM4NzgzMywiaWF0IjoxNTk4MzAxNDMzLCJpc3MiOiJBdXRlbnRpY2FjaW9uT25Cb2FyZGluZ1NlcnZpY2UiLCJhdWQiOiJEZWZhdWx0QXVkaWVuY2UifQ.JDuwXFlNSJHyDylH7A8UQuj1DvXTzTHdYptMwMsqh8g")
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6InVzcmFnZW50ZTAyIiwibmFtZWlkIjoiNDciLCJuYmYiOjE2MDE1ODI4NzIsImV4cCI6MTYwMTY2OTI3MiwiaWF0IjoxNjAxNTgyODcyLCJpc3MiOiJBdXRlbnRpY2FjaW9uT25Cb2FyZGluZ1NlcnZpY2UiLCJhdWQiOiJEZWZhdWx0QXVkaWVuY2UifQ.wl6sNxlbme7GytzO-7q7LcTIbDhdOqXfZ4oqKIgcdlc")
         btnNext.setOnClickListener(this)
     }
 
@@ -37,6 +37,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
             override fun onTick(millisUntilFinished: Long) {}
             override fun onFinish() {
                 var json = OfflineHandler(this@MainActivity).getStages("0", idLocalStage)
+                stageVal.text = json.get("stageId").toString()
                 titleVal.text = json.get("name").toString()
                 jsonVal.text = json.get("json").toString()
                 idLocalStage = json.get("stageId") as Int
@@ -50,12 +51,12 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         //Método "saveStages"
         OfflineHandler(this).saveStages(
             OfflineStageData(
-                0,
+                Integer.parseInt(stageVal.text.toString()),
                 titleVal.text.toString(),
                 "{json contenido}",
                 "/api/muestra/metodo",
                 0,
-                "OM-987654321")
+                "")
         )
 
         //Recuperar datos del stage siguiente
@@ -66,6 +67,10 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
         titleVal.text = ""
         titleVal.text = json.get("name").toString()
+
+        stageVal.text = ""
+        stageVal.text = json.get("stageId").toString()
+
         idLocalStage = Integer.parseInt(json.get("stageId").toString())
     }
 
