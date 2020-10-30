@@ -6,4 +6,15 @@
         android:icon="@android:drawable/ic_menu_add"
         android:title="Buscar"
         app:showAsAction="ifRoom" />
+
+    <item android:id="@+id/action_pendant"
+        android:icon="@android:drawable/ic_input_get"
+        android:title="Folios"
+        app:showAsAction="ifRoom" />
+
+    <item android:id="@+id/action_sync"
+        android:icon="@android:drawable/ic_popup_sync"
+        android:title="Sincronización"
+        app:showAsAction="ifRoom" />
+
 </menu>
