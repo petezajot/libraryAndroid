@@ -18,6 +18,7 @@ import com.ajithvgiri.searchdialog.SearchListItem
 import com.ajithvgiri.searchdialog.SearchableDialog
 import com.ds.offlinehandler.OfflineSingleton
 import com.ds.offlinehandler.model.OfflineStageData
+import com.ds.offlinehandler.model.OfflineUserData
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import kotlinx.android.synthetic.main.activity_main.*
@@ -32,16 +33,27 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, OnSearchItemSele
         setContentView(R.layout.activity_main)
         //Instancia de la librería desde singleton en librería
         OfflineSingleton.getInstance(this)
+
+
         //Inicializar Librería. Método "init"
         OfflineSingleton.offlineHandler!!.init(
                 "https://techhub.docsolutions.com/OBProgresemosDEV/WebApi/api/workflow/",
-                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6InVzcmFnZW50ZTAyIiwibmFtZWlkIjoiNDciLCJuYmYiOjE2MDQwMDM1NDgsImV4cCI6MTYwNDA4OTk0OCwiaWF0IjoxNjA0MDAzNTQ4LCJpc3MiOiJBdXRlbnRpY2FjaW9uT25Cb2FyZGluZ1NlcnZpY2UiLCJhdWQiOiJEZWZhdWx0QXVkaWVuY2UifQ.CsjJJD1aG5e0qeczMC3x2JiMQAKhCWzlvvDUW0o2Xrg",
-                0,
-                0,
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6InVzcmFnZW50ZTAyIiwibmFtZWlkIjoiNDciLCJuYmYiOjE2MDQ2ODQxNTUsImV4cCI6MTYwNDc3MDU1NSwiaWF0IjoxNjA0Njg0MTU1LCJpc3MiOiJBdXRlbnRpY2FjaW9uT25Cb2FyZGluZ1NlcnZpY2UiLCJhdWQiOiJEZWZhdWx0QXVkaWVuY2UifQ.ne-NDvlHLMKh5P9goliZefpyVClALlsSBVMUgumslqQ",
+                4,
+                2,
                 "1.0.0",
                 "TEST"
             )
+
+
         btnNext.setOnClickListener(this)
+        //Verificar que están completos los datos para una sesión online
+
+
+        val iov = OfflineSingleton.offlineHandler!!.isOfflineViable()
+
+
+        Log.e("ES VIABLE???: ", iov.toString())
     }
 
     override fun onResume() {
@@ -53,7 +65,13 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, OnSearchItemSele
                 //obtener stage inicial alojado por la librería. Método "getStages"
                 /*Para obtener el stage inicial, es necesario pasar al stage el parámetro "0" en string
                 * y el id del stage actual en entero en 0 también*/
+
+
+
                 var json = OfflineSingleton.offlineHandler!!.getStages("0", 0)
+
+
+
                 /*devuelve un hashmap con el id del stage devuelto, el nombre del stage y un json con
                 * el contenido de configuración de ese stage*/
                 stageVal.text = json.get("stageId").toString()
@@ -69,6 +87,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, OnSearchItemSele
         when(v!!.id){
             R.id.btnNext -> {
                 //Guardar stage actual
+
                 //Método "saveStages"
                 var hash = OfflineSingleton.offlineHandler!!.saveStages(
                     OfflineStageData(
@@ -77,7 +96,12 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, OnSearchItemSele
                         "{json contenido}",//json con respuestas del usuario
                         "/api/muestra/metodo",//endpoint a donde se sincronizara esta info
                         0,//sequence
-                        "")//Folio de solicitud, si se envía vacío, la librería generará un folio falso temporal
+                        "")
+
+
+
+
+
                 )//Este método almacena las respuestas del stage actual y a su vez, devuelve los datos
                 //Del stage siguiente para pasar a el
                 //La respuesta contiene un hashmap, mismo que tiene el elemento "products" que debe ser evaluado
@@ -157,7 +181,14 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, OnSearchItemSele
         //Lista de solicitudes pendientes por folio falso
         //Método "getListPersistence"
         //Devuelve un List<String> con los folios pendientes
+
+
+
         var lista = OfflineSingleton.offlineHandler!!.getListPersistence()
+
+
+
+
         var searchListItems: ArrayList<SearchListItem> = ArrayList()
         lista.forEach {
             val searchListItem = SearchListItem((it.get("ips").toString()).toInt(), it.get("folio").toString())
@@ -189,8 +220,11 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, OnSearchItemSele
         btn.setOnClickListener {
             //Login offline (funciona siempre y cuando el usuario ya haya hecho un login online)
             //Responde con un dato boolean
+
             var loginResponse = OfflineSingleton.offlineHandler!!.login("usragente02", "Nuevo1234")
-            if (loginResponse){
+
+            var isLogged = loginResponse.get("isLogged") as Boolean
+            if (isLogged){
                 //(TRUE) Existe el usuario y está correcto
                 Toast.makeText(this, "Login Correcto", Toast.LENGTH_LONG).show()
             }else{
@@ -198,11 +232,13 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, OnSearchItemSele
                 Toast.makeText(this, "Login incorrecto o no disponible para sesión offline", Toast.LENGTH_LONG).show()
             }
 
-            /*
+
             //Éste método es para almacenar los datos del usuario una ves que se logueó correctamente online
             //Para posteriormente hacer el login offline
 
-            offlineHandler!!.saveUser(OfflineUserData(
+
+            OfflineSingleton.offlineHandler!!.saveUser(
+                OfflineUserData(
                 47,
                 "usragente02",
                 "Daniel",
@@ -211,7 +247,11 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, OnSearchItemSele
                 "usragente02@correo.com",
                 "1234567890",
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6InVzcmFnZW50ZTAyIiwibmFtZWlkIjoiNDciLCJuYmYiOjE1OTgyODY2MzYsImV4cCI6MTU5ODM3MzAzNiwiaWF0IjoxNTk4Mjg2NjM2LCJpc3MiOiJBdXRlbnRpY2FjaW9uT25Cb2FyZGluZ1NlcnZpY2UiLCJhdWQiOiJEZWZhdWx0QXVkaWVuY2UifQ.94Pd-17Pic4Yl5VdXLVwo1h06ljpBcUdgzq-KY3t1o0",
-                "Nuevo1234"))*/
+                "Nuevo1234",
+                "RESPONSE",
+                "rolename",
+                "currentfile")
+            )
 
 
         }

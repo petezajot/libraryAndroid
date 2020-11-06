@@ -44,6 +44,7 @@ class ProductsActivity : AppCompatActivity(), View.OnClickListener {
     override fun onClick(v: View?) {
         val productId = productVal.text.toString()
         val productName = productTitleVal.text.toString()
+
         productStages = OfflineSingleton.offlineHandler!!.saveProductStages(
             OfflineProductData(
                 productId.toInt(),
@@ -55,15 +56,9 @@ class ProductsActivity : AppCompatActivity(), View.OnClickListener {
                 selectedProd!!)
         )
 
-        OfflineSingleton.offlineHandler!!.setPersistenceOffline(
-            productStages!!.get("productStageId").toString(),
-            productStages!!.get("productName").toString(),
-            productStages!!.get("productId").toString(),
-            OfflineSingleton.invoice)
-
         if (productStages!!.get("productName").toString().equals("")){
             //Finalizó ciclo
-            OfflineSingleton.invoice = ""
+            //OfflineSingleton.invoice = ""
             var i = Intent(this, MainActivity::class.java)
             startActivity(i)
             finish()

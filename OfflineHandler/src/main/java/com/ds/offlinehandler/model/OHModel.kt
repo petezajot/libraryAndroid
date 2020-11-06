@@ -104,6 +104,9 @@ data class OfflineUserData(@SerializedName("userId") val userId: Int,
                            @SerializedName("email") val email: String,
                            @SerializedName("phone") val phone: String,
                            @SerializedName("token") val token: String,
-                           @SerializedName("pass") val pass: String){
-    constructor():this(0, "", "", "", "", "", "", "", "")
+                           @SerializedName("pass") val pass: String,
+                           @SerializedName("response") val response: String,
+                           @SerializedName("rolename") val rolename: String,
+                           @SerializedName("currentfile") val currentfile: String){
+    constructor():this(0, "", "", "", "", "", "", "", "", "", "", "")
 }

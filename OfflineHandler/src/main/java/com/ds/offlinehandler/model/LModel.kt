@@ -21,6 +21,8 @@ internal class DBHelper(ctx: Context): SQLiteOpenHelper(ctx, DB_NAME, null, DB_V
     val COL_STAGE_ID: String           = "stage_id"
     val COL_STAGE_NAME: String         = "stage_name"
     val COL_STAGE_DESC: String         = "stage_desc"
+    val COL_ROLENAME: String           = "role_name"
+    val COL_CURRENT_FILE: String       = "current_file"
     val COL_PRODUCT_ID: String         = "product_id"
     val COL_PRODUCT_NAME: String       = "product_name"
     val COL_PRODUCT_DESC: String       = "product_desc"
@@ -40,6 +42,7 @@ internal class DBHelper(ctx: Context): SQLiteOpenHelper(ctx, DB_NAME, null, DB_V
     val COL_PASS: String               = "pass"
     val COL_PHONE: String              = "phone"
     val COL_TOKEN: String              = "token"
+    val COL_RESPONSE: String           = "col_response"
     val COL_PRODUCT: String            = "col_product"
     val COL_GROUP_NAME: String         = "group_name"
     val COL_GROUP_DESC: String         = "group_desc"
@@ -66,10 +69,10 @@ internal class DBHelper(ctx: Context): SQLiteOpenHelper(ctx, DB_NAME, null, DB_V
 
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
         db!!.execSQL("DROP TABLE IF EXISTS $TAB_JSON; ")
-        db!!.execSQL("DROP TABLE IF EXISTS $TAB_RESP; ")
-        db!!.execSQL("DROP TABLE IF EXISTS $TAB_USER; ")
-        db!!.execSQL("DROP TABLE IF EXISTS $TAB_PRODUCTS; ")
-        db!!.execSQL("DROP TABLE IF EXISTS $TAB_PERSISTENCE; ")
+        db.execSQL("DROP TABLE IF EXISTS $TAB_RESP; ")
+        db.execSQL("DROP TABLE IF EXISTS $TAB_USER; ")
+        db.execSQL("DROP TABLE IF EXISTS $TAB_PRODUCTS; ")
+        db.execSQL("DROP TABLE IF EXISTS $TAB_PERSISTENCE; ")
     }
 
     private fun offlineSaveUser(db: SQLiteDatabase?){
@@ -83,7 +86,10 @@ internal class DBHelper(ctx: Context): SQLiteOpenHelper(ctx, DB_NAME, null, DB_V
                 "$COL_EMAIL VARCHAR, " +
                 "$COL_PHONE VARCHAR, " +
                 "$COL_TOKEN VARCHAR, " +
-                "$COL_PASS VARCHAR" +
+                "$COL_PASS VARCHAR, " +
+                "$COL_RESPONSE VARCHAR, " +
+                "$COL_ROLENAME VARCHAR, " +
+                "$COL_CURRENT_FILE VARCHAR" +
                 ");"
         db!!.execSQL(query)
     }
@@ -103,7 +109,7 @@ internal class DBHelper(ctx: Context): SQLiteOpenHelper(ctx, DB_NAME, null, DB_V
         db!!.execSQL(query)
 
         var index = "CREATE INDEX stageName ON $TAB_JSON ($COL_NAME)"
-        db!!.execSQL(index)
+        db.execSQL(index)
     }
 
     private fun offlineSaveResponses(db: SQLiteDatabase?){

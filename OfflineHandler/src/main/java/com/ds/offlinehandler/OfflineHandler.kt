@@ -13,24 +13,17 @@ import retrofit2.Callback
 import retrofit2.Response
 
 
-class OfflineHandler(ctx: Context) {
-    //Asignamos la variable de contexto (Contenida en constructor)
-    var ctx = ctx
+class OfflineHandler() {
     //Inicializar librería
     fun init(url: String, token: String, wfid: Int, wfv: Int, apkv: String, imei: String){
-        DBHelper(ctx)
-        //URL global (Singleton)
-        OfflineSingleton.url = url
-        OfflineSingleton.token = token
+        OfflineSingleton.h//Instancia inicial de la base de datos
+        OfflineSingleton.url = url//URL en singleton internal
+        OfflineSingleton.token = token//Token en singleton internal
         //Verificar conexión
-        if (Misc(ctx).isNetDisp()){//Está habilitado el internet?
-            if (Misc(ctx).isOnlineNet()){//Hay servicio?
+        if (OfflineSingleton.misc!!.isNetDisp()){//Está habilitado el internet?
+            if (OfflineSingleton.misc!!.isOnlineNet()){//Hay servicio?
                 verifyDataOnline(wfid, wfv, apkv, imei)
-            }else{
-                verifyDataOffline()
             }
-        }else{
-            verifyDataOffline()
         }
     }
     //Consumir api de workflow
@@ -53,7 +46,7 @@ class OfflineHandler(ctx: Context) {
                     Log.e("Offline handler: ", "ERROR")
                 } else {
                     if (response.body()!!.IsOK) {
-                        OfflineController().dataStorage(response.body()!!, ctx)
+                        OfflineController().dataStorage(response.body()!!)
                     } else {
                         Log.e("Offline handler: ", response.body()!!.Messages)
                     }
@@ -67,31 +60,35 @@ class OfflineHandler(ctx: Context) {
     }
     //Si no hay conexión y no fue posible almacenar en SQLite los workflows
     internal fun verifyDataOffline(){
-        var exists = OfflineController().exists(ctx)
+        var exists = OfflineController().exists()
         if (exists == 0){
-            Toast.makeText(
-                ctx,
-                "No es posible actualizar datos para trabajar offline",
-                Toast.LENGTH_LONG
-            ).show()
+            Log.e("NO HAY CONEXIÓN", "SIN CONEXIÓN")
         }
     }
-
+    //Es posible utilizar la librería??
+    fun isOfflineViable(): Boolean{
+        var vc = OfflineController().isOfflineViable()
+        var cj = if(vc.get(0).countJson > 0) 1 else 0
+        var cu = if(vc.get(0).countUser > 0) 1 else 0
+        var cp = if(vc.get(0).countProducts > 0) 1 else 0
+        var sum = cj + cu + cp
+        return if(sum == 3) true else false
+    }
     //Recuperar stages de productos
     fun getProductStages(productId: String, productName: String, productStageId: String): HashMap<String, Any> {
         if (productId.equals("0") && productName.equals("0")){//Sí iniciamos solicitud
             //Y no hay un folio, creamos uno ficticio
-            OfflineSingleton.invoice = "FF-0"+Misc(ctx).generateRandom(6)
+            OfflineSingleton.invoice = "FF-0"+OfflineSingleton.misc!!.generateRandom(6)
         }
         var response = HashMap<String, Any>()
-        response = OfflineController().getProductsData(ctx, productId, productName, productStageId)
+        response = OfflineController().getProductsData(productId, productName, productStageId)
         response.put("folioFake", OfflineSingleton.invoice)
         return response
     }
 
     //Recuperar stages de workflow
     fun getStages(stage: String, idLocalStage: Int): java.util.HashMap<String, Any> {
-        var json = OfflineController().getApiData(ctx, stage, idLocalStage)
+        var json = OfflineController().getApiData(stage, idLocalStage)
         var setData = HashMap<String, Any>()
         if (json.get("product") == 1){
             var parser = JsonParser()
@@ -125,9 +122,9 @@ class OfflineHandler(ctx: Context) {
         hash.put("endpoint", osd.endpoint)
         hash.put("seq", osd.seq)
         hash.put("folio", OfflineSingleton.invoice)
-        hash.put("date", Misc(ctx).dateTime())
+        hash.put("date", OfflineSingleton.misc!!.dateTime())
 
-        var lastId = OfflineController().saveStageData(ctx, hash)
+        var lastId = OfflineController().saveStageData(hash)
         if (lastId > 0){
             result = getStages(osd.name, osd.stageId)
         }
@@ -143,17 +140,29 @@ class OfflineHandler(ctx: Context) {
         hash.put("endpoint", opd.endpoint)
         hash.put("seq", opd.seq)
         hash.put("folio", OfflineSingleton.invoice)
-        hash.put("date", Misc(ctx).dateTime())
+        hash.put("date", OfflineSingleton.misc!!.dateTime())
 
-        var lastId = OfflineController().saveStageData(ctx, hash)
+        var lastId = OfflineController().saveStageData(hash)
         if (lastId > 0){
             result = getProductStages(opd.stageId.toString(), opd.name, opd.productId)
         }
+
+        if (result.get("productName").toString().equals("")){
+            //Último stage
+            OfflineSingleton.invoice = ""
+        }
+
+        setPersistenceOffline(
+            result.get("productStageId").toString(),
+            result.get("productName").toString(),
+            result.get("productId").toString(),
+            OfflineSingleton.invoice)
+
         return result
     }
     //Verificar si existe usuario para insertar o actualizar
     fun saveUser(oud: OfflineUserData){
-        var existe = OfflineController().userExists(ctx, oud.userId)
+        var existe = OfflineController().userExists(oud.userId)
         if (existe == 1){
             //Si existe el usuario, hacemos update
             updateUser(oud)
@@ -174,8 +183,10 @@ class OfflineHandler(ctx: Context) {
         hash.put("phone", oud.phone)
         hash.put("token", oud.token)
         hash.put("pass", oud.pass)
-
-        OfflineController().saveUserData(ctx, hash)
+        hash.put("response", oud.response)
+        hash.put("rolename", oud.rolename)
+        hash.put("currentfile", oud.currentfile)
+        OfflineController().saveUserData(hash)
     }
     //Hacer update a SQLite usuario (Login offline)
     internal fun updateUser(oud: OfflineUserData){
@@ -189,20 +200,22 @@ class OfflineHandler(ctx: Context) {
         hash.put("phone", oud.phone)
         hash.put("token", oud.token)
         hash.put("pass", oud.pass)
-
-        OfflineController().updateUserData(ctx, hash)
+        hash.put("response", oud.response)
+        hash.put("rolename", oud.rolename)
+        hash.put("currentfile", oud.currentfile)
+        OfflineController().updateUserData(hash)
     }
 
-    fun login(user: String, pass: String): Boolean {
+    fun login(user: String, pass: String): HashMap<String, Any> {
         var hash = java.util.HashMap<String, String>()
         hash.put("user", user)
         hash.put("pass", pass)
 
-        return OfflineController().login(ctx, hash)
+        return OfflineController().login(hash)
     }
 
     fun offlineResponses(): ArrayList<HashMap<String, Any>> {
-        val res= OfflineController().getOfflineResponses(ctx)
+        val res= OfflineController().getOfflineResponses()
         var array = ArrayList<HashMap<String,Any>>()
         res.forEach {
             var hash = HashMap<String,Any>()
@@ -219,26 +232,26 @@ class OfflineHandler(ctx: Context) {
     }
 
     //Persistence
-    fun setPersistenceOffline(
+    internal fun setPersistenceOffline(
         ips: String,//idproductstage
         nps: String,//nameproductstage
         ip: String,//idproduct
         iv: String){//invoice (folio)
-        OfflineController().setPersistenceOffline(ips, nps, ip, iv, ctx)
+        OfflineController().setPersistenceOffline(ips, nps, ip, iv)
     }
 
 
     fun getListPersistence(): ArrayList<HashMap<String, Any>> {
-        return OfflineController().getListPersistence(ctx)
+        return OfflineController().getListPersistence()
     }
 
     fun getPersistenceStage(invoice: String): java.util.HashMap<String, Any> {
         OfflineSingleton.invoice = invoice
-        var persistenceData = OfflineController().getPersistenceDetail(invoice, ctx)
+        var persistenceData = OfflineController().getPersistenceDetail(invoice)
         var ips = persistenceData.get("ips").toString()
         var ip = persistenceData.get("ip").toString()
 
-        return OfflineController().getPendant(ips.toInt(), ip.toInt(), ctx)
+        return OfflineController().getPendant(ips.toInt(), ip.toInt())
 
     }
 

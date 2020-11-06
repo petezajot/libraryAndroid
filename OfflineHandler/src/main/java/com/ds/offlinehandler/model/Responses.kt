@@ -12,3 +12,11 @@ class RequestResponse: Serializable{
 }
 
 class ReqCollection: ArrayList<RequestResponse>(){}
+
+class OfflineViable: Serializable{
+    var countJson = 0
+    var countUser = 0
+    var countProducts = 0
+}
+
+class ViableCollection: ArrayList<OfflineViable>(){}

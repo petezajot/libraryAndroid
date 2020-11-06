@@ -1,52 +1,54 @@
 package com.ds.offlinehandler.controller
 
-import android.content.Context
 import com.ds.offlinehandler.OfflineSingleton
-import com.ds.offlinehandler.misc.Misc
-import com.ds.offlinehandler.model.ApiRequestGetData
-import com.ds.offlinehandler.model.DBHelper
-import com.ds.offlinehandler.model.ReqCollection
-import com.ds.offlinehandler.model.RequestResponse
+import com.ds.offlinehandler.model.*
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import kotlin.collections.HashMap
 
 internal class OfflineController {
-    fun dataStorage(
-        body: ApiRequestGetData,
-        ctx: Context
+    internal fun dataStorage(
+        body: ApiRequestGetData
     ) {
-        var h = DBHelper(ctx)
         var jsonModel: HashMap<String, Any> = HashMap()
         var gson = Gson()
         var bodyArr = body.Body
-        for (i in 0 until bodyArr.size) {
-            var stages = bodyArr[i].Stages
-            for (j in 0 until stages.size) {
-                var verExt = verifyExistence(stages[j].Id, ctx, h.TAB_JSON, h.COL_STAGE_ID)
-                jsonModel.put("bodyId", bodyArr[i].Id)
-                jsonModel.put("bodyName", bodyArr[i].Name)
-                jsonModel.put("stageId", stages[j].Id)
-                jsonModel.put("dateTime", Misc(ctx).dateTime())
-                jsonModel.put("name", stages[j].Name)
-                jsonModel.put("sequence", stages[j].Sequence)
-                var json = gson.toJson(stages[j])
-                jsonModel.put("jsonString", json)
 
-                if (verExt == 1){
-                    //Sí existe, hacemos update
-                    updateApiData(jsonModel, ctx)
-                }else{
-                    //No existe, hacemos insert
-                    insertApiData(jsonModel, ctx)
+        if (bodyArr != null){
+            if (bodyArr.size > 0){
+                //Respuesta del workflow correcta
+                for (i in 0 until bodyArr.size) {
+                    var stages = bodyArr[i].Stages
+                    for (j in 0 until stages.size) {
+                        var verExt = verifyExistence(stages[j].Id, OfflineSingleton.h!!.TAB_JSON, OfflineSingleton.h!!.COL_STAGE_ID)
+                        jsonModel.put("bodyId", bodyArr[i].Id)
+                        jsonModel.put("bodyName", bodyArr[i].Name)
+                        jsonModel.put("stageId", stages[j].Id)
+                        jsonModel.put("dateTime", OfflineSingleton.misc!!.dateTime())
+                        jsonModel.put("name", stages[j].Name)
+                        jsonModel.put("sequence", stages[j].Sequence)
+                        var json = gson.toJson(stages[j])
+                        jsonModel.put("jsonString", json)
+
+                        if (verExt == 1){
+                            //Sí existe, hacemos update
+                            updateApiData(jsonModel)
+                        }else{
+                            //No existe, hacemos insert
+                            insertApiData(jsonModel)
+                        }
+                        productStorage(json)
+                    }
                 }
-                productStorage(json, ctx)
+            }else{
+                return
             }
+        }else{
+            return
         }
     }
 
-    private fun productStorage(json: String, ctx: Context) {
-        var h = DBHelper(ctx)
+    private fun productStorage(json: String) {
         var jsonModel: HashMap<String, Any> = HashMap()
         var parser = JsonParser()
         var obj = parser.parse(json).asJsonObject
@@ -63,9 +65,8 @@ internal class OfflineController {
                         var AllowOffline = stageDetail.get("AllowOffline").toString()
                         var verExt = verifyExistence(
                             (stageDetail.get("Id").toString()).toInt(),
-                            ctx,
-                            h.TAB_PRODUCTS,
-                            h.COL_PRODUCT_ID)
+                            OfflineSingleton.h!!.TAB_PRODUCTS,
+                            OfflineSingleton.h!!.COL_PRODUCT_ID)
                         jsonModel.put("idStage", obj.get("Id"))//INTEGER
                         jsonModel.put("nameStage", obj.get("Name").toString())
                         jsonModel.put("descStage", obj.get("Description").toString())
@@ -83,10 +84,10 @@ internal class OfflineController {
                         if (AllowOffline == "true"){
                             if (verExt == 1){
                                 //Sí existe, hacemos update
-                                updateProductData(jsonModel, ctx)
+                                updateProductData(jsonModel)
                             }else{
                                 //No existe, hacemos insert
-                                insertProductData(jsonModel, ctx)
+                                insertProductData(jsonModel)
                             }
                         }
                     }
@@ -95,9 +96,8 @@ internal class OfflineController {
         }
     }
 
-    fun verifyExistence(id: Int, ctx: Context, table: String, evaluate: String): Int{
-        var h = DBHelper(ctx)
-        val db = h.writableDatabase
+    fun verifyExistence(id: Int, table: String, evaluate: String): Int{
+        val db = OfflineSingleton.h!!.writableDatabase
         var existence = 0
 
         val query = "SELECT " +
@@ -116,11 +116,10 @@ internal class OfflineController {
         return existence
     }
 
-    fun exists(ctx: Context): Int{
-        var h = DBHelper(ctx)
-        var db = h.writableDatabase
+    fun exists(): Int{
+        var db = OfflineSingleton.h!!.writableDatabase
         var existe = 0
-        val query = "SELECT COUNT(1) FROM ${h.TAB_JSON}"
+        val query = "SELECT COUNT(1) FROM ${OfflineSingleton.h!!.TAB_JSON}"
         var c = db.rawQuery(query, null)
         if (c.count > 0){
             c.moveToFirst()
@@ -132,11 +131,10 @@ internal class OfflineController {
         return existe
     }
 
-    fun userExists(ctx: Context, userId: Int): Int {
-        var h = DBHelper(ctx)
-        var db = h.writableDatabase
+    fun userExists(userId: Int): Int {
+        var db = OfflineSingleton.h!!.writableDatabase
         var existe = 0
-        val query = "SELECT COUNT(1) FROM ${h.TAB_USER} WHERE ${h.COL_USER_ID} = $userId;"
+        val query = "SELECT COUNT(1) FROM ${OfflineSingleton.h!!.TAB_USER} WHERE ${OfflineSingleton.h!!.COL_USER_ID} = $userId;"
         var c = db.rawQuery(query, null)
         if (c.count > 0){
             c.moveToFirst()
@@ -148,17 +146,16 @@ internal class OfflineController {
         return existe
     }
 
-    fun insertApiData(jsonModel: HashMap<String, Any>, ctx: Context) {
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
-        val query = "INSERT INTO ${h.TAB_JSON} (" +
-                "${h.COL_STAGE_ID}, " +
-                "${h.COL_BODY_ID}, " +
-                "${h.COL_BODY_NAME}, " +
-                "${h.COL_DATE}, " +
-                "${h.COL_NAME}, " +
-                "${h.COL_SEQUENCE}, " +
-                "${h.COL_JSON}" +
+    fun insertApiData(jsonModel: HashMap<String, Any>) {
+        val db = OfflineSingleton.h!!.writableDatabase
+        val query = "INSERT INTO ${OfflineSingleton.h!!.TAB_JSON} (" +
+                "${OfflineSingleton.h!!.COL_STAGE_ID}, " +
+                "${OfflineSingleton.h!!.COL_BODY_ID}, " +
+                "${OfflineSingleton.h!!.COL_BODY_NAME}, " +
+                "${OfflineSingleton.h!!.COL_DATE}, " +
+                "${OfflineSingleton.h!!.COL_NAME}, " +
+                "${OfflineSingleton.h!!.COL_SEQUENCE}, " +
+                "${OfflineSingleton.h!!.COL_JSON}" +
                 ")VALUES(" +
                 "${jsonModel.get("stageId")}, " +
                 "${jsonModel.get("bodyId")}, " +
@@ -172,38 +169,36 @@ internal class OfflineController {
         db.close()
     }
 
-    fun updateApiData(jsonModel: HashMap<String, Any>, ctx: Context) {
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
-        val query = "UPDATE ${h.TAB_JSON} SET " +
-                "${h.COL_BODY_ID} = ${jsonModel.get("bodyId")}, " +
-                "${h.COL_BODY_NAME} = '${jsonModel.get("bodyName")}', " +
-                "${h.COL_DATE} = '${jsonModel.get("dateTime")}', " +
-                "${h.COL_NAME} = '${jsonModel.get("name")}', " +
-                "${h.COL_SEQUENCE} = ${jsonModel.get("sequence")}, " +
-                "${h.COL_JSON} = '${jsonModel.get("jsonString")}' " +
-                "WHERE ${h.COL_STAGE_ID} = ${jsonModel.get("stageId")};"
+    fun updateApiData(jsonModel: HashMap<String, Any>) {
+        val db = OfflineSingleton.h!!.writableDatabase
+        val query = "UPDATE ${OfflineSingleton.h!!.TAB_JSON} SET " +
+                "${OfflineSingleton.h!!.COL_BODY_ID} = ${jsonModel.get("bodyId")}, " +
+                "${OfflineSingleton.h!!.COL_BODY_NAME} = '${jsonModel.get("bodyName")}', " +
+                "${OfflineSingleton.h!!.COL_DATE} = '${jsonModel.get("dateTime")}', " +
+                "${OfflineSingleton.h!!.COL_NAME} = '${jsonModel.get("name")}', " +
+                "${OfflineSingleton.h!!.COL_SEQUENCE} = ${jsonModel.get("sequence")}, " +
+                "${OfflineSingleton.h!!.COL_JSON} = '${jsonModel.get("jsonString")}' " +
+                "WHERE ${OfflineSingleton.h!!.COL_STAGE_ID} = ${jsonModel.get("stageId")};"
         db.execSQL(query)
         db.close()
     }
 
-    private fun insertProductData(hash: java.util.HashMap<String, Any>, ctx: Context) {
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
-        val query = "INSERT INTO ${h.TAB_PRODUCTS} (" +
-                "${h.COL_STAGE_ID}, " +
-                "${h.COL_STAGE_NAME}, " +
-                "${h.COL_STAGE_DESC}, " +
-                "${h.COL_GROUP_NAME}, " +
-                "${h.COL_GROUP_DESC}, " +
-                "${h.COL_GROUP_ID}, " +
-                "${h.COL_PRODUCT_STAGE_ID}, " +
-                "${h.COL_PRODUCT_STAGE_NAME}, " +
-                "${h.COL_PRODUCT_ID}, " +
-                "${h.COL_PRODUCT_SEQ}, " +
-                "${h.COL_PRODUCT_NAME}, " +
-                "${h.COL_PRODUCT_DESC}, " +
-                "${h.COL_PRODUCT_STAGE}" +
+    private fun insertProductData(hash: java.util.HashMap<String, Any>) {
+        val db = OfflineSingleton.h!!.writableDatabase
+        val query = "INSERT INTO ${OfflineSingleton.h!!.TAB_PRODUCTS} (" +
+                "${OfflineSingleton.h!!.COL_STAGE_ID}, " +
+                "${OfflineSingleton.h!!.COL_STAGE_NAME}, " +
+                "${OfflineSingleton.h!!.COL_STAGE_DESC}, " +
+                "${OfflineSingleton.h!!.COL_GROUP_NAME}, " +
+                "${OfflineSingleton.h!!.COL_GROUP_DESC}, " +
+                "${OfflineSingleton.h!!.COL_GROUP_ID}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_STAGE_ID}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_STAGE_NAME}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_ID}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_SEQ}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_NAME}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_DESC}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_STAGE}" +
                 ")VALUES(" +
                 "${hash.get("idStage")}, " +
                 "'${hash.get("nameStage")}', " +
@@ -222,70 +217,67 @@ internal class OfflineController {
         db.execSQL(query)
 
         var stagevalue = hash.get("idStage").toString()
-        updateStatusJson(stagevalue.toInt(), ctx)
+        updateStatusJson(stagevalue.toInt())
         db.close()
     }
 
-    private fun updateProductData(hash: java.util.HashMap<String, Any>, ctx: Context) {
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
-        val query = "UPDATE ${h.TAB_PRODUCTS} SET " +
-                "${h.COL_STAGE_ID} = ${hash.get("idStage")}, " +
-                "${h.COL_STAGE_NAME} = '${hash.get("nameStage")}', " +
-                "${h.COL_STAGE_DESC} = '${hash.get("descStage")}', " +
-                "${h.COL_GROUP_NAME} = '${hash.get("groupName")}', " +
-                "${h.COL_GROUP_DESC} = '${hash.get("groupDesc")}', " +
-                "${h.COL_GROUP_ID} = ${hash.get("groupId")}, " +
-                "${h.COL_PRODUCT_STAGE_ID} = ${hash.get("producStageId")}, " +
-                "${h.COL_PRODUCT_STAGE_NAME} = ${hash.get("productStageName")}, " +
-                "${h.COL_PRODUCT_SEQ} = ${hash.get("productSequence")}, " +
-                "${h.COL_PRODUCT_NAME} = '${hash.get("productName")}', " +
-                "${h.COL_PRODUCT_DESC} = '${hash.get("productDesc")}', " +
-                "${h.COL_PRODUCT_STAGE} = '${hash.get("productStageData")}' " +
-                "WHERE ${h.COL_PRODUCT_ID} = ${hash.get("productId")};"
+    private fun updateProductData(hash: java.util.HashMap<String, Any>) {
+        val db = OfflineSingleton.h!!.writableDatabase
+        val query = "UPDATE ${OfflineSingleton.h!!.TAB_PRODUCTS} SET " +
+                "${OfflineSingleton.h!!.COL_STAGE_ID} = ${hash.get("idStage")}, " +
+                "${OfflineSingleton.h!!.COL_STAGE_NAME} = '${hash.get("nameStage")}', " +
+                "${OfflineSingleton.h!!.COL_STAGE_DESC} = '${hash.get("descStage")}', " +
+                "${OfflineSingleton.h!!.COL_GROUP_NAME} = '${hash.get("groupName")}', " +
+                "${OfflineSingleton.h!!.COL_GROUP_DESC} = '${hash.get("groupDesc")}', " +
+                "${OfflineSingleton.h!!.COL_GROUP_ID} = ${hash.get("groupId")}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_STAGE_ID} = ${hash.get("producStageId")}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_STAGE_NAME} = ${hash.get("productStageName")}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_SEQ} = ${hash.get("productSequence")}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_NAME} = '${hash.get("productName")}', " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_DESC} = '${hash.get("productDesc")}', " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_STAGE} = '${hash.get("productStageData")}' " +
+                "WHERE ${OfflineSingleton.h!!.COL_PRODUCT_ID} = ${hash.get("productId")};"
         db.execSQL(query)
 
         var stagevalue = hash.get("idStage").toString()
-        updateStatusJson(stagevalue.toInt(), ctx)
+        updateStatusJson(stagevalue.toInt())
         db.close()
     }
 
-    private fun updateStatusJson(idStage: Int, ctx: Context) {
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
-        val update = "UPDATE ${h.TAB_JSON} " +
-                "SET ${h.COL_PRODUCT} = 1 " +
-                "WHERE ${h.COL_STAGE_ID} = $idStage;"
+    private fun updateStatusJson(idStage: Int) {
+        val db = OfflineSingleton.h!!.writableDatabase
+        val update = "UPDATE ${OfflineSingleton.h!!.TAB_JSON} " +
+                "SET ${OfflineSingleton.h!!.COL_PRODUCT} = 1 " +
+                "WHERE ${OfflineSingleton.h!!.COL_STAGE_ID} = $idStage;"
         db.execSQL(update)
         db.close()
     }
 
-    fun getApiData(ctx: Context, stage: String, idLocalStage: Int): HashMap<String, Any> {
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
+    fun getApiData(stage: String, idLocalStage: Int): HashMap<String, Any> {
+        val db = OfflineSingleton.h!!.writableDatabase
         //Get Stages
         var json = HashMap<String, Any>()
         var query: String = if (stage == "0") {
             "SELECT " +
-                    "${h.COL_STAGE_ID}, " +
-                    "${h.COL_NAME}, " +
-                    "${h.COL_JSON}, " +
-                    "${h.COL_ID}, " +
-                    "${h.COL_PRODUCT} " +
-                    "FROM ${h.TAB_JSON} " +
-                    "ORDER BY ${h.COL_SEQUENCE} " +
+                    "${OfflineSingleton.h!!.COL_STAGE_ID}, " +
+                    "${OfflineSingleton.h!!.COL_NAME}, " +
+                    "${OfflineSingleton.h!!.COL_JSON}, " +
+                    "${OfflineSingleton.h!!.COL_ID}, " +
+                    "${OfflineSingleton.h!!.COL_PRODUCT} " +
+                    "FROM ${OfflineSingleton.h!!.TAB_JSON} " +
+                    "ORDER BY ${OfflineSingleton.h!!.COL_SEQUENCE} " +
                     "ASC LIMIT 1;"
         }else{
             "SELECT " +
-                    "${h.COL_STAGE_ID}, " +
-                    "${h.COL_NAME}, " +
-                    "${h.COL_JSON}, " +
-                    "${h.COL_ID}, " +
-                    "${h.COL_PRODUCT} " +
-                    "FROM ${h.TAB_JSON} " +
-                    "WHERE ${h.COL_ID} > " +
-                    "(SELECT ${h.COL_ID} FROM ${h.TAB_JSON} WHERE ${h.COL_NAME} = '$stage' AND ${h.COL_STAGE_ID} = $idLocalStage) " +
-                    "ORDER BY ${h.COL_ID} " +
+                    "${OfflineSingleton.h!!.COL_STAGE_ID}, " +
+                    "${OfflineSingleton.h!!.COL_NAME}, " +
+                    "${OfflineSingleton.h!!.COL_JSON}, " +
+                    "${OfflineSingleton.h!!.COL_ID}, " +
+                    "${OfflineSingleton.h!!.COL_PRODUCT} " +
+                    "FROM ${OfflineSingleton.h!!.TAB_JSON} " +
+                    "WHERE ${OfflineSingleton.h!!.COL_ID} > " +
+                    "(SELECT ${OfflineSingleton.h!!.COL_ID} FROM ${OfflineSingleton.h!!.TAB_JSON} WHERE ${OfflineSingleton.h!!.COL_NAME} = '$stage' AND ${OfflineSingleton.h!!.COL_STAGE_ID} = $idLocalStage) " +
+                    "ORDER BY ${OfflineSingleton.h!!.COL_ID} " +
                     "ASC LIMIT 1;"
         }
 
@@ -311,42 +303,40 @@ internal class OfflineController {
     }
 
     fun getProductsData(
-        ctx: Context,
         productId: String,
         productName: String,
         productStageId: String
     ): HashMap<String, Any> {
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
+        val db = OfflineSingleton.h!!.writableDatabase
         //Get Stages
         var json = HashMap<String, Any>()
         var query: String = if (productName == "0") {
             "SELECT " +
-                    "${h.COL_PRODUCT_STAGE_ID}, " +
-                    "${h.COL_PRODUCT_STAGE_NAME}, " +
-                    "${h.COL_PRODUCT_ID}, " +
-                    "${h.COL_PRODUCT_DESC}, " +
-                    "${h.COL_PRODUCT_NAME}, " +
-                    "${h.COL_PRODUCT_STAGE}, " +
-                    "${h.COL_PRODUCT_SEQ} " +
-                    "FROM ${h.TAB_PRODUCTS} " +
-                    "WHERE ${h.COL_PRODUCT_STAGE_ID} = $productStageId " +
-                    "ORDER BY ${h.COL_PRODUCT_SEQ} " +
+                    "${OfflineSingleton.h!!.COL_PRODUCT_STAGE_ID}, " +
+                    "${OfflineSingleton.h!!.COL_PRODUCT_STAGE_NAME}, " +
+                    "${OfflineSingleton.h!!.COL_PRODUCT_ID}, " +
+                    "${OfflineSingleton.h!!.COL_PRODUCT_DESC}, " +
+                    "${OfflineSingleton.h!!.COL_PRODUCT_NAME}, " +
+                    "${OfflineSingleton.h!!.COL_PRODUCT_STAGE}, " +
+                    "${OfflineSingleton.h!!.COL_PRODUCT_SEQ} " +
+                    "FROM ${OfflineSingleton.h!!.TAB_PRODUCTS} " +
+                    "WHERE ${OfflineSingleton.h!!.COL_PRODUCT_STAGE_ID} = $productStageId " +
+                    "ORDER BY ${OfflineSingleton.h!!.COL_PRODUCT_SEQ} " +
                     "ASC LIMIT 1;"
         }else{
             "SELECT " +
-                    "${h.COL_PRODUCT_STAGE_ID}, " +
-                    "${h.COL_PRODUCT_STAGE_NAME}, " +
-                    "${h.COL_PRODUCT_ID}, " +
-                    "${h.COL_PRODUCT_DESC}, " +
-                    "${h.COL_PRODUCT_NAME}, " +
-                    "${h.COL_PRODUCT_STAGE}, " +
-                    "${h.COL_PRODUCT_SEQ} " +
-                    "FROM ${h.TAB_PRODUCTS} " +
-                    "WHERE ${h.COL_ID} > " +
-                    "(SELECT ${h.COL_ID} FROM ${h.TAB_PRODUCTS} WHERE ${h.COL_PRODUCT_NAME} = '$productName' AND ${h.COL_PRODUCT_ID} = $productId) " +
-                    "AND ${h.COL_PRODUCT_STAGE_ID} = $productStageId " +
-                    "ORDER BY ${h.COL_ID} " +
+                    "${OfflineSingleton.h!!.COL_PRODUCT_STAGE_ID}, " +
+                    "${OfflineSingleton.h!!.COL_PRODUCT_STAGE_NAME}, " +
+                    "${OfflineSingleton.h!!.COL_PRODUCT_ID}, " +
+                    "${OfflineSingleton.h!!.COL_PRODUCT_DESC}, " +
+                    "${OfflineSingleton.h!!.COL_PRODUCT_NAME}, " +
+                    "${OfflineSingleton.h!!.COL_PRODUCT_STAGE}, " +
+                    "${OfflineSingleton.h!!.COL_PRODUCT_SEQ} " +
+                    "FROM ${OfflineSingleton.h!!.TAB_PRODUCTS} " +
+                    "WHERE ${OfflineSingleton.h!!.COL_ID} > " +
+                    "(SELECT ${OfflineSingleton.h!!.COL_ID} FROM ${OfflineSingleton.h!!.TAB_PRODUCTS} WHERE ${OfflineSingleton.h!!.COL_PRODUCT_NAME} = '$productName' AND ${OfflineSingleton.h!!.COL_PRODUCT_ID} = $productId) " +
+                    "AND ${OfflineSingleton.h!!.COL_PRODUCT_STAGE_ID} = $productStageId " +
+                    "ORDER BY ${OfflineSingleton.h!!.COL_ID} " +
                     "ASC LIMIT 1;"
         }
 
@@ -375,20 +365,19 @@ internal class OfflineController {
         return json
     }
 
-    fun saveStageData(ctx: Context, hash: HashMap<String, Any>): Int {
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
+    fun saveStageData(hash: HashMap<String, Any>): Int {
+        val db = OfflineSingleton.h!!.writableDatabase
         var lastId = 0
         //Insertar
-        val queryInsert = "INSERT INTO ${h.TAB_RESP} (" +
-                "${h.COL_STAGE_ID}, " +
-                "${h.COL_NAME}, " +
-                "${h.COL_DATE}, " +
-                "${h.COL_JSON}, " +
-                "${h.COL_ENDPOINT}, " +
-                "${h.COL_SEQUENCE}, " +
-                "${h.COL_FOLIO}, " +
-                "${h.COL_SYNC}" +
+        val queryInsert = "INSERT INTO ${OfflineSingleton.h!!.TAB_RESP} (" +
+                "${OfflineSingleton.h!!.COL_STAGE_ID}, " +
+                "${OfflineSingleton.h!!.COL_NAME}, " +
+                "${OfflineSingleton.h!!.COL_DATE}, " +
+                "${OfflineSingleton.h!!.COL_JSON}, " +
+                "${OfflineSingleton.h!!.COL_ENDPOINT}, " +
+                "${OfflineSingleton.h!!.COL_SEQUENCE}, " +
+                "${OfflineSingleton.h!!.COL_FOLIO}, " +
+                "${OfflineSingleton.h!!.COL_SYNC}" +
                 ")VALUES(" +
                 "${hash.get("stageId")}, " +
                 "'${hash.get("name")}', " +
@@ -413,19 +402,21 @@ internal class OfflineController {
         return lastId
     }
 
-    fun saveUserData(ctx: Context, hash: HashMap<String, Any>) {
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
-        val query = "INSERT INTO ${h.TAB_USER} (" +
-                "${h.COL_USER_ID}, " +
-                "${h.COL_USER_NAME}, " +
-                "${h.COL_NAME}, " +
-                "${h.COL_APAT}, " +
-                "${h.COL_AMAT}, " +
-                "${h.COL_EMAIL}, " +
-                "${h.COL_PHONE}, " +
-                "${h.COL_TOKEN}, " +
-                "${h.COL_PASS}" +
+    fun saveUserData(hash: HashMap<String, Any>) {
+        val db = OfflineSingleton.h!!.writableDatabase
+        val query = "INSERT INTO ${OfflineSingleton.h!!.TAB_USER} (" +
+                "${OfflineSingleton.h!!.COL_USER_ID}, " +
+                "${OfflineSingleton.h!!.COL_USER_NAME}, " +
+                "${OfflineSingleton.h!!.COL_NAME}, " +
+                "${OfflineSingleton.h!!.COL_APAT}, " +
+                "${OfflineSingleton.h!!.COL_AMAT}, " +
+                "${OfflineSingleton.h!!.COL_EMAIL}, " +
+                "${OfflineSingleton.h!!.COL_PHONE}, " +
+                "${OfflineSingleton.h!!.COL_TOKEN}, " +
+                "${OfflineSingleton.h!!.COL_PASS}, " +
+                "${OfflineSingleton.h!!.COL_RESPONSE}, " +
+                "${OfflineSingleton.h!!.COL_ROLENAME}, " +
+                "${OfflineSingleton.h!!.COL_CURRENT_FILE}" +
                 ")VALUES(" +
                 "${hash.get("userId")}, " +
                 "'${hash.get("userName")}', " +
@@ -435,63 +426,108 @@ internal class OfflineController {
                 "'${hash.get("email")}', " +
                 "'${hash.get("phone")}', " +
                 "'${hash.get("token")}', " +
-                "'${hash.get("pass")}'" +
+                "'${hash.get("pass")}', " +
+                "'${hash.get("response")}', " +
+                "'${hash.get("rolename")}', " +
+                "'${hash.get("currentfile")}'" +
                 ");"
         db.execSQL(query)
         db.close()
     }
 
-    fun updateUserData(ctx: Context, hash: HashMap<String, Any>) {
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
-        val query = "UPDATE ${h.TAB_USER} SET " +
-                "${h.COL_USER_NAME} = '${hash.get("userName")}', " +
-                "${h.COL_NAME} = '${hash.get("name")}', " +
-                "${h.COL_APAT} = '${hash.get("apat")}', " +
-                "${h.COL_AMAT} = '${hash.get("amat")}', " +
-                "${h.COL_EMAIL} = '${hash.get("email")}', " +
-                "${h.COL_PHONE} = '${hash.get("phone")}', " +
-                "${h.COL_TOKEN} = '${hash.get("token")}', " +
-                "${h.COL_PASS} = '${hash.get("pass")}' " +
-                "WHERE ${h.COL_USER_ID} = ${hash.get("userId")};"
+    fun updateUserData(hash: HashMap<String, Any>) {
+        val db = OfflineSingleton.h!!.writableDatabase
+        val query = "UPDATE ${OfflineSingleton.h!!.TAB_USER} SET " +
+                "${OfflineSingleton.h!!.COL_USER_NAME} = '${hash.get("userName")}', " +
+                "${OfflineSingleton.h!!.COL_NAME} = '${hash.get("name")}', " +
+                "${OfflineSingleton.h!!.COL_APAT} = '${hash.get("apat")}', " +
+                "${OfflineSingleton.h!!.COL_AMAT} = '${hash.get("amat")}', " +
+                "${OfflineSingleton.h!!.COL_EMAIL} = '${hash.get("email")}', " +
+                "${OfflineSingleton.h!!.COL_PHONE} = '${hash.get("phone")}', " +
+                "${OfflineSingleton.h!!.COL_TOKEN} = '${hash.get("token")}', " +
+                "${OfflineSingleton.h!!.COL_PASS} = '${hash.get("pass")}', " +
+                "${OfflineSingleton.h!!.COL_RESPONSE} = '${hash.get("response")}', " +
+                "${OfflineSingleton.h!!.COL_ROLENAME} = '${hash.get("rolename")}', " +
+                "${OfflineSingleton.h!!.COL_CURRENT_FILE} = '${hash.get("currentfile")}' " +
+                "WHERE ${OfflineSingleton.h!!.COL_USER_ID} = ${hash.get("userId")};"
         db.execSQL(query)
         db.close()
     }
 
-    fun login(ctx: Context, hash: HashMap<String, String>): Boolean {
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
-        var login: Boolean = false
-        val query = "SELECT COUNT (1) " +
-                "FROM ${h.TAB_USER} " +
-                "WHERE ${h.COL_USER_NAME} = '${hash.get("user")}' " +
-                "AND ${h.COL_PASS} = '${hash.get("pass")}'"
+    fun login(hash: HashMap<String, String>): HashMap<String, Any> {
+        val db = OfflineSingleton.h!!.writableDatabase
+        var respHash = HashMap<String, Any>()
+
+        val query = "SELECT " +
+                "${OfflineSingleton.h!!.COL_ID}, " +
+                "${OfflineSingleton.h!!.COL_USER_ID}, " +
+                "${OfflineSingleton.h!!.COL_USER_NAME}, " +
+                "${OfflineSingleton.h!!.COL_NAME}, " +
+                "${OfflineSingleton.h!!.COL_APAT}, " +
+                "${OfflineSingleton.h!!.COL_AMAT}, " +
+                "${OfflineSingleton.h!!.COL_EMAIL}, " +
+                "${OfflineSingleton.h!!.COL_PHONE}, " +
+                "${OfflineSingleton.h!!.COL_TOKEN}, " +
+                "${OfflineSingleton.h!!.COL_PASS}, " +
+                "${OfflineSingleton.h!!.COL_RESPONSE}," +
+                "${OfflineSingleton.h!!.COL_ROLENAME}, " +
+                "${OfflineSingleton.h!!.COL_CURRENT_FILE} " +
+                "FROM ${OfflineSingleton.h!!.TAB_USER} " +
+                "WHERE ${OfflineSingleton.h!!.COL_USER_NAME} = '${hash.get("user")}' " +
+                "AND ${OfflineSingleton.h!!.COL_PASS} = '${hash.get("pass")}'"
         var c = db.rawQuery(query, null)
         if (c.count > 0){
             c.moveToFirst()
             do {
-                login = if (c.getInt(0) == 1) true else false
+                respHash.put("id", c.getInt(0))
+                respHash.put("userId", c.getInt(1))
+                respHash.put("userName", c.getString(2))
+                respHash.put("name", c.getString(3))
+                respHash.put("apat", c.getString(4))
+                respHash.put("amat", c.getString(5))
+                respHash.put("email", c.getString(6))
+                respHash.put("phone", c.getString(7))
+                respHash.put("token", c.getString(8))
+                respHash.put("pass", c.getString(9))
+                respHash.put("response", c.getString(10))
+                respHash.put("rolename", c.getString(11))
+                respHash.put("currentfile", c.getString(12))
+                respHash.put("isLogged", true)
             }while (c.moveToNext())
+        }else{
+            respHash.put("id", 0)
+            respHash.put("userId", 0)
+            respHash.put("userName", "")
+            respHash.put("name", "")
+            respHash.put("apat", "")
+            respHash.put("amat", "")
+            respHash.put("email", "")
+            respHash.put("phone", "")
+            respHash.put("token", "")
+            respHash.put("pass", "")
+            respHash.put("response", "")
+            respHash.put("rolename", "")
+            respHash.put("currentfile", "")
+            respHash.put("isLogged", false)
         }
         db.close()
-        return login
+        return respHash
     }
 
-    fun getOfflineResponses(ctx: Context): ReqCollection {
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
+    fun getOfflineResponses(): ReqCollection {
+        val db = OfflineSingleton.h!!.writableDatabase
         var rc = ReqCollection()
         val query = "SELECT " +
-                "${h.COL_ID}, " +
-                "${h.COL_STAGE_ID}, " +
-                "${h.COL_NAME}, " +
-                "${h.COL_JSON}, " +
-                "${h.COL_ENDPOINT}, " +
-                "${h.COL_FOLIO} " +
-                "FROM ${h.TAB_RESP} " +
-                "WHERE ${h.COL_SYNC} = 0 " +
-                "AND NOT ${h.COL_FOLIO} = '' " +
-                "ORDER BY ${h.COL_SEQUENCE}"
+                "${OfflineSingleton.h!!.COL_ID}, " +
+                "${OfflineSingleton.h!!.COL_STAGE_ID}, " +
+                "${OfflineSingleton.h!!.COL_NAME}, " +
+                "${OfflineSingleton.h!!.COL_JSON}, " +
+                "${OfflineSingleton.h!!.COL_ENDPOINT}, " +
+                "${OfflineSingleton.h!!.COL_FOLIO} " +
+                "FROM ${OfflineSingleton.h!!.TAB_RESP} " +
+                "WHERE ${OfflineSingleton.h!!.COL_SYNC} = 0 " +
+                "AND NOT ${OfflineSingleton.h!!.COL_FOLIO} = '' " +
+                "ORDER BY ${OfflineSingleton.h!!.COL_SEQUENCE}"
         var c = db.rawQuery(query, null)
         if (c.count > 0){
             c.moveToFirst()
@@ -511,9 +547,8 @@ internal class OfflineController {
         return rc
     }
 
-    fun saveStagesData(hash: HashMap<String, Any>, ctx: Context) {
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
+    fun saveStagesData(hash: HashMap<String, Any>) {
+        val db = OfflineSingleton.h!!.writableDatabase
 
         var parser = JsonParser()//Parser
         var obj = parser.parse(hash.get("jsonString").toString()).asJsonObject//Convertir string de sqlite en objeto JSON
@@ -527,12 +562,12 @@ internal class OfflineController {
                     var wfContent = parser.parse(it.toString()).asJsonObject//Acceder a objetos dentro de workflow
                     var stages = parser.parse(wfContent.get("Stages").toString()).asJsonArray// acceder a Stages
                     stages.forEach {
-                        val query = "INSERT INTO ${h.TAB_PRODUCTS} (" +
-                                "${h.COL_STAGE_ID}, " +
-                                "${h.COL_PRODUCT_ID}, " +
-                                "${h.COL_PRODUCT_NAME}, " +
-                                "${h.COL_PRODUCT_DESC}, " +
-                                "${h.COL_PRODUCT_STAGE}" +
+                        val query = "INSERT INTO ${OfflineSingleton.h!!.TAB_PRODUCTS} (" +
+                                "${OfflineSingleton.h!!.COL_STAGE_ID}, " +
+                                "${OfflineSingleton.h!!.COL_PRODUCT_ID}, " +
+                                "${OfflineSingleton.h!!.COL_PRODUCT_NAME}, " +
+                                "${OfflineSingleton.h!!.COL_PRODUCT_DESC}, " +
+                                "${OfflineSingleton.h!!.COL_PRODUCT_STAGE}" +
                                 ")VALUES(" +
                                 "${hash.get("stageId")}, " +
                                 "${wf.get("Id")}, " +
@@ -542,9 +577,9 @@ internal class OfflineController {
                                 ");"
                         db.execSQL(query)
 
-                        val update = "UPDATE ${h.TAB_JSON} " +
-                                "SET ${h.COL_PRODUCT} = 1 " +
-                                "WHERE ${h.COL_STAGE_ID} = ${hash.get("stageId")};"
+                        val update = "UPDATE ${OfflineSingleton.h!!.TAB_JSON} " +
+                                "SET ${OfflineSingleton.h!!.COL_PRODUCT} = 1 " +
+                                "WHERE ${OfflineSingleton.h!!.COL_STAGE_ID} = ${hash.get("stageId")};"
                         db.execSQL(update)
                     }
                 }
@@ -553,9 +588,8 @@ internal class OfflineController {
         db.close()
     }
 
-    fun updateStagesData(hash: java.util.HashMap<String, Any>, ctx: Context) {
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
+    fun updateStagesData(hash: java.util.HashMap<String, Any>) {
+        val db = OfflineSingleton.h!!.writableDatabase
 
         var parser = JsonParser()//Parser
         var obj = parser.parse(hash.get("jsonString").toString()).asJsonObject//Convertir string de sqlite en objeto JSON
@@ -569,12 +603,12 @@ internal class OfflineController {
                     var wfContent = parser.parse(it.toString()).asJsonObject//Acceder a objetos dentro de workflow
                     var stages = parser.parse(wfContent.get("Stages").toString()).asJsonArray// acceder a Stages
                     stages.forEach {
-                        val query = "UPDATE ${h.TAB_PRODUCTS} SET " +
-                                "${h.COL_STAGE_ID} = ${hash.get("stageId")}, " +
-                                "${h.COL_PRODUCT_NAME} = ${wf.get("Name")}, " +
-                                "${h.COL_PRODUCT_DESC} = ${wf.get("Description")}, " +
-                                "${h.COL_PRODUCT_STAGE} = '${it}' " +
-                                "WHERE ${h.COL_ID} = ${wf.get("Id")};"
+                        val query = "UPDATE ${OfflineSingleton.h!!.TAB_PRODUCTS} SET " +
+                                "${OfflineSingleton.h!!.COL_STAGE_ID} = ${hash.get("stageId")}, " +
+                                "${OfflineSingleton.h!!.COL_PRODUCT_NAME} = ${wf.get("Name")}, " +
+                                "${OfflineSingleton.h!!.COL_PRODUCT_DESC} = ${wf.get("Description")}, " +
+                                "${OfflineSingleton.h!!.COL_PRODUCT_STAGE} = '${it}' " +
+                                "WHERE ${OfflineSingleton.h!!.COL_ID} = ${wf.get("Id")};"
                         db.execSQL(query)
                     }
                 }
@@ -583,14 +617,13 @@ internal class OfflineController {
         db.close()
     }
     //Persistence
-    fun getListPersistence(ctx: Context): ArrayList<HashMap<String, Any>> {
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
+    fun getListPersistence(): ArrayList<HashMap<String, Any>> {
+        val db = OfflineSingleton.h!!.writableDatabase
         var list: ArrayList<HashMap<String, Any>> = ArrayList()
         val query = "SELECT " +
-                "${h.COL_PERS_INVOICE}, " +
-                "${h.COL_PERS_IPS} " +
-                "FROM ${h.TAB_PERSISTENCE} " +
+                "${OfflineSingleton.h!!.COL_PERS_INVOICE}, " +
+                "${OfflineSingleton.h!!.COL_PERS_IPS} " +
+                "FROM ${OfflineSingleton.h!!.TAB_PERSISTENCE} " +
                 "WHERE pers_status = 1;"
         var c = db.rawQuery(query, null)
         if (c.count > 0){
@@ -610,14 +643,13 @@ internal class OfflineController {
         ips: String,//idproductstage
         nps: String, //nameproductstage
         ip: String, //idproduct
-        iv: String, //invoice(Folio)
-        ctx: Context
+        iv: String //invoice(Folio)
     ) {
-        var productStageData = getActualProductStage(ip, ctx)
-        var lastStageData = getLastProductStage(productStageData.get("productStageId") as Int, ctx)
+        var productStageData = getActualProductStage(ip)
+        var lastStageData = getLastProductStage(productStageData.get("productStageId") as Int)
         var exists = 0
         if (!OfflineSingleton.invoice.equals("")){
-            exists = getExistentProduct(OfflineSingleton.invoice, ctx)
+            exists = getExistentProduct(OfflineSingleton.invoice)
         }
 
         var actualId = (productStageData.get("id").toString()).toInt()
@@ -633,51 +665,48 @@ internal class OfflineController {
 
         if (actualId.equals(lastId)){
             //update estatus de la tabla a 0
-            updatePersistenceStatus(OfflineSingleton.invoice, ctx)
+            updatePersistenceStatus(OfflineSingleton.invoice)
         }else{
             if (exists.equals(1)){
                 //Hacemos update
-                updatePersistence(hash, ctx)
+                updatePersistence(hash)
             }else{
                 //Hacemos insert
-                insertPersistence(hash, ctx)
+                insertPersistence(hash)
             }
         }
     }
 
-    private fun updatePersistenceStatus(iv: String, ctx: Context){
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
-        val query = "UPDATE ${h.TAB_PERSISTENCE} SET " +
-                "${h.COL_PERS_STATUS} = 0 " +
-                "WHERE ${h.COL_PERS_INVOICE} = '$iv';"
+    private fun updatePersistenceStatus(iv: String){
+        val db = OfflineSingleton.h!!.writableDatabase
+        val query = "UPDATE ${OfflineSingleton.h!!.TAB_PERSISTENCE} SET " +
+                "${OfflineSingleton.h!!.COL_PERS_STATUS} = 0 " +
+                "WHERE ${OfflineSingleton.h!!.COL_PERS_INVOICE} = '$iv';"
         db.execSQL(query)
     }
 
-    private fun updatePersistence(hash: java.util.HashMap<String, Any>, ctx: Context) {
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
-        val query = "UPDATE ${h.TAB_PERSISTENCE} SET " +
-                "${h.COL_PERS_IPS} = ${hash.get("ips")}, " +
-                "${h.COL_PERS_NPS} = '${hash.get("nps")}', " +
-                "${h.COL_PERS_IP} = ${hash.get("ip")}, " +
-                "${h.COL_PERS_ACTUALREG} = ${hash.get("actualReg")}, " +
-                "${h.COL_PERS_LASTREGID} = ${hash.get("lastReg")} " +
-                "WHERE ${h.COL_PERS_INVOICE} = '${hash.get("iv")}';"
+    private fun updatePersistence(hash: java.util.HashMap<String, Any>) {
+        val db = OfflineSingleton.h!!.writableDatabase
+        val query = "UPDATE ${OfflineSingleton.h!!.TAB_PERSISTENCE} SET " +
+                "${OfflineSingleton.h!!.COL_PERS_IPS} = ${hash.get("ips")}, " +
+                "${OfflineSingleton.h!!.COL_PERS_NPS} = '${hash.get("nps")}', " +
+                "${OfflineSingleton.h!!.COL_PERS_IP} = ${hash.get("ip")}, " +
+                "${OfflineSingleton.h!!.COL_PERS_ACTUALREG} = ${hash.get("actualReg")}, " +
+                "${OfflineSingleton.h!!.COL_PERS_LASTREGID} = ${hash.get("lastReg")} " +
+                "WHERE ${OfflineSingleton.h!!.COL_PERS_INVOICE} = '${hash.get("iv")}';"
         db.execSQL(query)
     }
 
-    private fun insertPersistence(hash: HashMap<String, Any>, ctx: Context){
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
-        val query = "INSERT INTO ${h.TAB_PERSISTENCE}(" +
-                "${h.COL_PERS_IPS}, " +
-                "${h.COL_PERS_NPS}, " +
-                "${h.COL_PERS_IP}, " +
-                "${h.COL_PERS_INVOICE}, " +
-                "${h.COL_PERS_ACTUALREG}, " +
-                "${h.COL_PERS_LASTREGID}, " +
-                "${h.COL_PERS_STATUS} " +
+    private fun insertPersistence(hash: HashMap<String, Any>){
+        val db = OfflineSingleton.h!!.writableDatabase
+        val query = "INSERT INTO ${OfflineSingleton.h!!.TAB_PERSISTENCE}(" +
+                "${OfflineSingleton.h!!.COL_PERS_IPS}, " +
+                "${OfflineSingleton.h!!.COL_PERS_NPS}, " +
+                "${OfflineSingleton.h!!.COL_PERS_IP}, " +
+                "${OfflineSingleton.h!!.COL_PERS_INVOICE}, " +
+                "${OfflineSingleton.h!!.COL_PERS_ACTUALREG}, " +
+                "${OfflineSingleton.h!!.COL_PERS_LASTREGID}, " +
+                "${OfflineSingleton.h!!.COL_PERS_STATUS} " +
                 ")VALUES(" +
                 "${hash.get("ips")}, " +
                 "'${hash.get("nps")}', " +
@@ -690,26 +719,25 @@ internal class OfflineController {
         db.execSQL(query)
     }
 
-    private fun getActualProductStage(ip: String, ctx: Context): HashMap<String, Any>{
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
+    private fun getActualProductStage(ip: String): HashMap<String, Any>{
+        val db = OfflineSingleton.h!!.writableDatabase
         var hash = HashMap<String, Any>()
         val query = "SELECT " +
-                "${h.COL_ID}, " +
-                "${h.COL_STAGE_ID}, " +
-                "${h.COL_STAGE_DESC}, " +
-                "${h.COL_GROUP_NAME}, " +
-                "${h.COL_GROUP_DESC}, " +
-                "${h.COL_GROUP_ID}, " +
-                "${h.COL_PRODUCT_STAGE_ID}, " +
-                "${h.COL_PRODUCT_STAGE_NAME}, " +
-                "${h.COL_PRODUCT_ID}, " +
-                "${h.COL_PRODUCT_SEQ}, " +
-                "${h.COL_PRODUCT_NAME}, " +
-                "${h.COL_PRODUCT_DESC}, " +
-                "${h.COL_PRODUCT_STAGE} " +
-                "FROM ${h.TAB_PRODUCTS} " +
-                "WHERE ${h.COL_PRODUCT_ID} = $ip"
+                "${OfflineSingleton.h!!.COL_ID}, " +
+                "${OfflineSingleton.h!!.COL_STAGE_ID}, " +
+                "${OfflineSingleton.h!!.COL_STAGE_DESC}, " +
+                "${OfflineSingleton.h!!.COL_GROUP_NAME}, " +
+                "${OfflineSingleton.h!!.COL_GROUP_DESC}, " +
+                "${OfflineSingleton.h!!.COL_GROUP_ID}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_STAGE_ID}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_STAGE_NAME}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_ID}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_SEQ}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_NAME}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_DESC}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_STAGE} " +
+                "FROM ${OfflineSingleton.h!!.TAB_PRODUCTS} " +
+                "WHERE ${OfflineSingleton.h!!.COL_PRODUCT_ID} = $ip"
         var c = db.rawQuery(query, null)
         if (c.count > 0){
             c.moveToFirst()
@@ -747,15 +775,14 @@ internal class OfflineController {
         return hash
     }
 
-    private fun getLastProductStage(actualStage: Int, ctx: Context): Int{
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
+    private fun getLastProductStage(actualStage: Int): Int{
+        val db = OfflineSingleton.h!!.writableDatabase
         var lastId = 0
         val query = "SELECT " +
-                "${h.COL_ID} " +
-                "FROM ${h.TAB_PRODUCTS} " +
-                "WHERE ${h.COL_PRODUCT_STAGE_ID} = $actualStage " +
-                "ORDER BY ${h.COL_PRODUCT_SEQ} " +
+                "${OfflineSingleton.h!!.COL_ID} " +
+                "FROM ${OfflineSingleton.h!!.TAB_PRODUCTS} " +
+                "WHERE ${OfflineSingleton.h!!.COL_PRODUCT_STAGE_ID} = $actualStage " +
+                "ORDER BY ${OfflineSingleton.h!!.COL_PRODUCT_SEQ} " +
                 "DESC LIMIT 1"
         var c = db.rawQuery(query, null)
         if (c.count > 0){
@@ -768,14 +795,13 @@ internal class OfflineController {
         return lastId
     }
 
-    private fun getExistentProduct(invoice: String, ctx: Context): Int{
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
+    private fun getExistentProduct(invoice: String): Int{
+        val db = OfflineSingleton.h!!.writableDatabase
         var exists = 0
         val query = "SELECT " +
                 "COUNT(1) " +
-                "FROM ${h.TAB_PERSISTENCE} " +
-                "WHERE ${h.COL_PERS_INVOICE} = '$invoice';"
+                "FROM ${OfflineSingleton.h!!.TAB_PERSISTENCE} " +
+                "WHERE ${OfflineSingleton.h!!.COL_PERS_INVOICE} = '$invoice';"
         var c = db.rawQuery(query, null)
         if (c.count > 0){
             c.moveToFirst()
@@ -787,20 +813,19 @@ internal class OfflineController {
         return exists
     }
 
-    fun getPersistenceDetail(invoice: String, ctx: Context): HashMap<String, Any> {
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
+    fun getPersistenceDetail(invoice: String): HashMap<String, Any> {
+        val db = OfflineSingleton.h!!.writableDatabase
         var hash = HashMap<String, Any>()
         val query = "SELECT " +
-                "${h.COL_ID}, " +
-                "${h.COL_PERS_IPS}, " +
-                "${h.COL_PERS_NPS}, " +
-                "${h.COL_PERS_IP}, " +
-                "${h.COL_PERS_ACTUALREG}, " +
-                "${h.COL_PERS_LASTREGID} " +
+                "${OfflineSingleton.h!!.COL_ID}, " +
+                "${OfflineSingleton.h!!.COL_PERS_IPS}, " +
+                "${OfflineSingleton.h!!.COL_PERS_NPS}, " +
+                "${OfflineSingleton.h!!.COL_PERS_IP}, " +
+                "${OfflineSingleton.h!!.COL_PERS_ACTUALREG}, " +
+                "${OfflineSingleton.h!!.COL_PERS_LASTREGID} " +
                 "FROM " +
-                "${h.TAB_PERSISTENCE} " +
-                "WHERE ${h.COL_PERS_INVOICE} = '$invoice';"
+                "${OfflineSingleton.h!!.TAB_PERSISTENCE} " +
+                "WHERE ${OfflineSingleton.h!!.COL_PERS_INVOICE} = '$invoice';"
         var c = db.rawQuery(query, null)
         if (c.count > 0){
             c.moveToFirst()
@@ -817,22 +842,21 @@ internal class OfflineController {
         return hash
     }
 
-    fun getPendant(ips: Int, ip: Int, ctx: Context): java.util.HashMap<String, Any> {
-        val h = DBHelper(ctx)
-        val db = h.writableDatabase
+    fun getPendant(ips: Int, ip: Int): java.util.HashMap<String, Any> {
+        val db = OfflineSingleton.h!!.writableDatabase
         var json = HashMap<String, Any>()
         val query = "SELECT " +
-                "${h.COL_PRODUCT_STAGE_ID}, " +
-                "${h.COL_PRODUCT_STAGE_NAME}, " +
-                "${h.COL_PRODUCT_ID}, " +
-                "${h.COL_PRODUCT_DESC}, " +
-                "${h.COL_PRODUCT_NAME}, " +
-                "${h.COL_PRODUCT_STAGE}, " +
-                "${h.COL_PRODUCT_SEQ} " +
-                "FROM ${h.TAB_PRODUCTS} " +
-                "WHERE ${h.COL_PRODUCT_STAGE_ID} = $ips " +
-                "AND ${h.COL_PRODUCT_ID} = $ip " +
-                "ORDER BY ${h.COL_PRODUCT_SEQ} " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_STAGE_ID}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_STAGE_NAME}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_ID}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_DESC}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_NAME}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_STAGE}, " +
+                "${OfflineSingleton.h!!.COL_PRODUCT_SEQ} " +
+                "FROM ${OfflineSingleton.h!!.TAB_PRODUCTS} " +
+                "WHERE ${OfflineSingleton.h!!.COL_PRODUCT_STAGE_ID} = $ips " +
+                "AND ${OfflineSingleton.h!!.COL_PRODUCT_ID} = $ip " +
+                "ORDER BY ${OfflineSingleton.h!!.COL_PRODUCT_SEQ} " +
                 "ASC LIMIT 1;"
         var c = db.rawQuery(query, null)
         if (c.count > 0){
@@ -857,5 +881,27 @@ internal class OfflineController {
         }
         db.close()
         return json
+    }
+
+    fun isOfflineViable(): ViableCollection {
+        val db = OfflineSingleton.h!!.writableDatabase
+        var vc = ViableCollection()
+        val query = "SELECT " +
+                "(SELECT COUNT(1) FROM tab_json)AS countJson, " +
+                "(SELECT COUNT(1) FROM tab_user)AS countUser, " +
+                "(SELECT COUNT(1) FROM tab_products) AS countProducts;"
+        var c = db.rawQuery(query, null)
+        if (c.count > 0){
+            c.moveToNext()
+            do {
+                var ov = OfflineViable()
+                ov.countJson = c.getInt(0)
+                ov.countUser = c.getInt(1)
+                ov.countProducts = c.getInt(2)
+                vc.add(ov)
+            }while (c.moveToNext())
+        }
+        db.close()
+        return vc
     }
 }
